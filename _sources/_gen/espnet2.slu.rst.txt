@@ -4,17 +4,6 @@ espnet2.slu package
 
 
 
-.. _espnet2.slu.espnet_model:
-
-espnet2.slu.espnet_model
-------------------------
-
-.. automodule:: espnet2.slu.espnet_model
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-
 .. _espnet2.slu.__init__:
 
 espnet2.slu.__init__
@@ -26,12 +15,12 @@ espnet2.slu.__init__
     :show-inheritance:
 
 
-.. _espnet2.slu.postencoder.transformer_postencoder:
+.. _espnet2.slu.espnet_model:
 
-espnet2.slu.postencoder.transformer_postencoder
------------------------------------------------
+espnet2.slu.espnet_model
+------------------------
 
-.. automodule:: espnet2.slu.postencoder.transformer_postencoder
+.. automodule:: espnet2.slu.espnet_model
     :members:
     :undoc-members:
     :show-inheritance:
@@ -54,6 +43,17 @@ espnet2.slu.postencoder.conformer_postencoder
 ---------------------------------------------
 
 .. automodule:: espnet2.slu.postencoder.conformer_postencoder
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+
+.. _espnet2.slu.postencoder.transformer_postencoder:
+
+espnet2.slu.postencoder.transformer_postencoder
+-----------------------------------------------
+
+.. automodule:: espnet2.slu.postencoder.transformer_postencoder
     :members:
     :undoc-members:
     :show-inheritance:
