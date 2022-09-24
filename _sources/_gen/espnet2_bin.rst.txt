@@ -2544,7 +2544,7 @@ enh_s2t_train.py
       --enh_model_conf ENH_MODEL_CONF
                             The keyword arguments for enh submodel class. (default: {'stft_consistency': False, 'loss_type': 'mask_mse', 'mask_type': None})
       --asr_model_conf ASR_MODEL_CONF
-                            The keyword arguments for asr submodel class. (default: {'ctc_weight': 0.5, 'interctc_weight': 0.0, 'ignore_id': -1, 'lsm_weight': 0.0, 'length_normalized_loss': False, 'report_cer': True, 'report_wer': True, 'sym_space': '<space>', 'sym_blank': '<blank>', 'extract_feats_in_collect_stats': True})
+                            The keyword arguments for asr submodel class. (default: {'auxctc': False, 'ctc_weight': 0.5, 'interctc_weight': 0.0, 'ignore_id': -1, 'lsm_weight': 0.0, 'length_normalized_loss': False, 'report_cer': True, 'report_wer': True, 'sym_space': '<space>', 'sym_blank': '<blank>', 'extract_feats_in_collect_stats': True})
       --st_model_conf ST_MODEL_CONF
                             The keyword arguments for st submodel class. (default: {'stft_consistency': False, 'loss_type': 'mask_mse', 'mask_type': None})
       --diar_model_conf DIAR_MODEL_CONF
