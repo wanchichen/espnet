@@ -10,10 +10,7 @@
 """Extract MFCC & intermediate embedding from the Hubert model for k-means clustering"""
 
 import logging
-import os
-import sys
 
-import fairseq
 import soundfile as sf
 import torch
 import torchaudio
@@ -26,24 +23,26 @@ logger = logging.getLogger("feature_loader")
 
 
 class MfccFeatureReader(object):
-    def __init__(self, fs):
-        self.fs = fs
+    def __init__(self, sample_rate=16000):
+        self.sample_rate = sample_rate
 
-    def load_audio(self, path):
+    def load_audio(self, path, ref_len=None):
         wav, sr = sf.read(path)
-        assert sr == self.fs, sr
+        assert sr == self.sample_rate, sr
         if wav.ndim == 2:
             wav = wav.mean(-1)
+        if ref_len is not None and abs(ref_len - len(wav)) > 160:
+            logging.warning(f"ref {ref_len} != read {len(wav)} ({path})")
         return wav
 
-    def get_feats(self, path):
-        x = self.load_audio(path)
+    def get_feats(self, path, ref_len=None):
+        x = self.load_audio(path, ref_len=ref_len)
         with torch.no_grad():
             x = torch.from_numpy(x).view(1, -1).float()
 
             mfcc = torchaudio.compliance.kaldi.mfcc(
                 waveform=x,
-                sample_frequency=self.fs,
+                sample_frequency=self.sample_rate,
                 use_energy=False,
             ).transpose(
                 0, 1
@@ -57,8 +56,10 @@ class MfccFeatureReader(object):
 
 
 class HubertFeatureReader(object):
-    def __init__(self, fs, hubert_url, hubert_dir_path, layer, max_chunk=1600000):
-        self.fs = fs
+    def __init__(
+        self, hubert_url, hubert_dir_path, layer, sample_rate=16000, max_chunk=1600000
+    ):
+        self.sample_rate = sample_rate
 
         self.device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
         from espnet2.asr.encoder.hubert_encoder import FairseqHubertEncoder
@@ -70,15 +71,18 @@ class HubertFeatureReader(object):
         self.max_chunk = max_chunk
         logger.info(f" max_chunk = {self.max_chunk}")
 
-    def load_audio(self, path):
+    def load_audio(self, path, ref_len=None):
         wav, sr = sf.read(path)
-        assert sr == self.fs, sr
+        assert sr == self.sample_rate, sr
         if wav.ndim == 2:
             wav = wav.mean(-1)
+        assert wav.ndim == 1, wav.ndim
+        if ref_len is not None and abs(ref_len - len(wav)) > 160:
+            logging.warning(f"ref {ref_len} != read {len(wav)} ({path})")
         return wav
 
-    def get_feats(self, path):
-        x = self.load_audio(path)
+    def get_feats(self, path, ref_len=None):
+        x = self.read_audio(path, ref_len=ref_len)
         with torch.no_grad():
             x = torch.from_numpy(x).float().to(self.device)
             x = x.view(1, -1)
@@ -94,3 +98,46 @@ class HubertFeatureReader(object):
                 )
                 feat.append(feat_chunk)
             return torch.cat(feat, 1).squeeze(0).cpu()
+
+
+class ESPnetHubertFeatureReader(object):
+    def __init__(self, hubert_model_path, layer, sample_rate=16000, max_chunk=1600000):
+        self.sample_rate = sample_rate
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        from espnet2.tasks.hubert import HubertTask
+
+        hubert_model, hubert_train_args = HubertTask.build_model_from_file(
+            None,
+            hubert_model_path,
+            device,
+        )
+        self.device = next(hubert_model.parameters()).device
+        self.model = hubert_model.encoder.hubert_pretrain_model.eval()
+
+        self.layer = layer
+        self.max_chunk = max_chunk
+        logger.info(f" max_chunk = {self.max_chunk}")
+
+    def load_audio(self, path, ref_len=None):
+        wav, sr = sf.read(path)
+        assert sr == self.sample_rate, sr
+        if wav.ndim == 2:
+            wav = wav.mean(-1)
+        assert wav.ndim == 1, wav.ndim
+        if ref_len is not None and abs(ref_len - len(wav)) > 160:
+            logging.warning(f"ref {ref_len} != read {len(wav)} ({path})")
+        return wav
+
+    def get_feats(self, path, ref_len=None):
+        x = self.load_audio(path, ref_len=ref_len)
+        with torch.inference_mode():
+            x = torch.from_numpy(x).float().to(self.device)
+            x = x.view(1, -1)
+
+            feat = self.model.wav2vec2.extract_features(x, num_layers=self.layer,)[0][
+                -1
+            ][
+                0
+            ]  # (time, feat_dim)
+        return feat.cpu()
