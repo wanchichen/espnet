@@ -36,7 +36,6 @@ stop_stage=10000     # Processes is stopped at the specified stage.
 skip_data_prep=false # Skip data preparation stages.
 skip_train=false     # Skip training stages.
 skip_eval=false      # Skip decoding and evaluation stages.
-skip_upload=true     # Skip packing and uploading stages.
 skip_upload_hf=true  # Skip uploading to hugging face stages.
 ngpu=1               # The number of gpus ("0" uses cpu, otherwise use gpu).
 num_nodes=1          # The number of nodes.
@@ -44,7 +43,6 @@ nj=32                # The number of parallel jobs.
 dumpdir=dump         # Directory to dump features.
 expdir=exp           # Directory to save experiments.
 python=python3       # Specify python to execute espnet commands.
-gpu_kmeans=false     # Whether to use gpu in kmeans process, including feature dumping and label dumping.
 
 # Data preparation related
 local_data_opts= # The options given to local/data.sh.
@@ -70,22 +68,25 @@ num_splits_ssl=1 # Number of splitting for lm corpus.
 # Pretrain related
 train_start_iter= # Pretrain starts from the specified iteration (0 mean MFCC iteraion)
 train_stop_iter=  # Pretrain is stopped from the specified iteration (0 mean MFCC iteraion)
-n_clusters=          # Number of k-means clusters (multiple values, e.g. "100 500 500")
-features_km=         # Feature for k-means clustering (multiple values, e.g. "mfcc hubert hubert")
-layers_km=           # Layers of feature for k-means clustering of training stage (multiple values, e.g. "0 6 9")
-portion_km=1         # Portion of training set used for k-means
 train_configs=    # Configration files of training stage
-wave_file_path_prefix=  # The root prefix regarding to items in dump/org/${dset}/wav.scp, e.g. ${LIBRISPEECH}/LibriSpeech
+feats_normalize=  # Normalizaton layer type.
+n_clusters=             # Number of k-means clusters (multiple values, e.g. "100 500 500")
+features_km=            # Feature for k-means clustering (multiple values, e.g. "mfcc hubert hubert")
+layers_km=              # Layers of feature for k-means clustering of training stage (multiple values, e.g. "0 6 9")
+portion_km=1            # Portion of training set used for k-means
+gpu_dump_feature=false  # Whether to use gpu in kmeans process for feature dumping.
 alignment_phoneme_dir=  # Phoneme alignment directory with tsv file (utt_id, phoneme_alignment)
 
 # Upload model related
 hf_repo=
+inference_ssl_model=valid.loss.best.pth # SSL model path from previous iteration and uploading
 
 # [Task dependent] Set the datadir name created by local/data.sh
 train_set=     # Name of training set
 valid_set=     # Name of valid set
-speech_fold_length=800 # fold_length for speech data during ASR training.
-text_fold_length=400   # fold_length for text data during ASR training.
+lang=noinfo    # The language type of corpus.
+speech_fold_length=800 # fold_length for speech data during SSL training.
+text_fold_length=400   # fold_length for text data during SSL training.
 
 help_message=$(cat << EOF
 Usage: $0 --train-set "<train_set_name>" --valid-set "<valid_set_name>" --test_sets "<test_set_names>"
@@ -97,14 +98,14 @@ Options:
     --skip_data_prep # Skip data preparation stages (default="${skip_data_prep}").
     --skip_train     # Skip training stages (default="${skip_train}")
     --skip_eval      # Skip decoding and evaluation stages (default="${skip_eval}").
-    --skip_upload    # Skip packing and uploading stages (default="${skip_upload}").
+    --skip_upload_hf # Skip packing and uploading stages (default="${skip_upload_hf}").
     --ngpu           # The number of gpus ("0" uses cpu, otherwise use gpu, default="${ngpu}").
     --num_nodes      # The number of nodes (default="${num_nodes}").
     --nj             # The number of parallel jobs (default="${nj}").
-    --gpu_kmeans     # Whether to perform gpu decoding (default="${gpu_kmeans}").
     --dumpdir        # Directory to dump features (default="${dumpdir}").
     --expdir         # Directory to save experiments (default="${expdir}").
     --python         # Specify python to execute espnet commands (default="${python}").
+    --hf_repo        # Hugging face repository name (default="${hf_repo}").
 
     # Data preparation related
     --local_data_opts # The options given to local/data.sh (default="${local_data_opts}").
@@ -129,12 +130,14 @@ Options:
     --train_start_iter  # Pretrain starts from the specified iteration (0 mean MFCC iteraion, default="${train_start_iter}").
     --train_stop_iter   # Pretrain is stopped from the specified iteration (0 mean MFCC iteraion, default="${train_stop_iter}").
     --train_configs    # configration files of training stage
+    --feats_normalize  # Normalizaton layer type (default="${feats_normalize}").
     --n_clusters       # number of k-means clusters of training stages (e.g. "100 500 500")
     --features_km      # feature for k-means clustering of training stages (e.g. "mfcc hubert hubert")
     --layers_km        # layers of feature for k-means clustering of training stages (e.g. "0 6 9")
     --hubert_args      # Arguments for hubert model training (default="${hubert_args}").
                        # e.g., --hubert_args "--max_epoch 10"
                        # Note that it will overwrite args in pt config.
+    --gpu_dump_feature # Whether to use gpu for kmeans feature dumping (default="${gpu_dump_feature}").
 
     # Alignment
     --alignment_phoneme_dir # Phoneme alignment directory with tsv file (utt_id, phoneme_alignment)
@@ -142,8 +145,10 @@ Options:
     # [Task dependent] Set the datadir name created by local/data.sh
     --train_set     # Name of training train set (required).
     --valid_set     # Name of validation set used for monitoring/tuning network training (required).
-    --speech_fold_length # fold_length for speech data during HuBERT training (default="${speech_fold_length}").
-    --text_fold_length   # fold_length for text data during HuBERT training (default="${text_fold_length}").
+    --lang          # The language type of corpus (default=${lang}).
+    --speech_fold_length  # fold_length for speech data during HuBERT training (default="${speech_fold_length}").
+    --text_fold_length    # fold_length for text data during HuBERT training (default="${text_fold_length}").
+    --inference_ssl_model # SSL model path from previous iteration and uploading (default="${inference_ssl_model}").
 EOF
 )
 
@@ -172,24 +177,6 @@ if [ "${feats_type}" = raw ]; then
 else
     log "${help_message}"
     log "Error: not supported: --feats_type ${feats_type}"
-    exit 2
-fi
-
-# Check tokenization type
-token_listdir=data/token_list
-chartoken_list="${token_listdir}"/char/tokens.txt
-# NOTE: keep for future development.
-# shellcheck disable=SC2034
-wordtoken_list="${token_listdir}"/word/tokens.txt
-
-if [ "${token_type}" = char ]; then
-    token_list="${chartoken_list}"
-    bpemodel=none
-elif [ "${token_type}" = word ]; then
-    token_list="${wordtoken_list}"
-    bpemodel=none
-else
-    log "Error: not supported --token_type '${token_type}'"
     exit 2
 fi
 
@@ -338,8 +325,11 @@ if ! "${skip_train}"; then
 
     for ((iter=${train_start_iter}; iter<=${train_stop_iter};iter++)); do
 
+        # Get the feature type, feature layer, n_clusters and config for the current iteration
+        feats_km="${feature_list[${iter}]}"
+        layer="${layer_list[${iter}]}"
+        n_clusters="${n_clusters_list[${iter}]}"
         ssl_config="${train_config_list[${iter}]}"
-        ssl_stats_dir="${expdir}/hubert_iter${iter}_stats_${feats_type}"
 
         if [ -n "${ssl_config}" ]; then
             ssl_tag="$(basename "${ssl_config}" .yaml)_${feats_type}"
@@ -347,64 +337,44 @@ if ! "${skip_train}"; then
             ssl_tag="train_${feats_type}"
         fi
 
+        ssl_stats_dir="${expdir}/hubert_iter${iter}_stats_${feats_type}"
         ssl_exp="${expdir}/hubert_iter${iter}_${ssl_tag}"
-
-        if [ ${iter} -gt 0 ]; then
-            pretrained_ssl_config="${train_config_list[${iter}-1]}"
-            pretrained_ssl_tag="$(basename "${pretrained_ssl_config}" .yaml)_${feats_type}"
-            pretrained_ssl_exp="${expdir}/hubert_iter$(( iter-1 ))_${pretrained_ssl_tag}"
-        fi
-
-        feats_km="${feature_list[${iter}]}"
-        layer="${layer_list[${iter}]}"
-        train_set_plabel=$(eval "echo ${train_set}_\${feats_km}_km\${n_clusters_list[${iter}]}")
-        valid_set_plabel=$(eval "echo ${valid_set}_\${feats_km}_km\${n_clusters_list[${iter}]}")
-
-        n_clusters="${n_clusters_list[${iter}]}"
-        dictdir="./data/token_list_kmeans_iter${iter}_${feats_km}_${n_clusters}clusters/${token_type}"
-
+        token_listdir="data/${lang}_token_list_kmeans_iter${iter}_${feats_km}_${n_clusters}clusters/${token_type}"
         km_tag="kmeans_iter${iter}_${feats_km}_${train_set}_portion${portion_km}"
 
         if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
             log "Stage 5 [Iter ${iter} / ${train_stop_iter}]: Running ${n_clusters} cluster K-means on ${feats_km} feature."
 
-            if [ ${iter} -eq 0 ] || [ "${feats_km}" = mfcc ]; then
-                ./local/perform_kmeans.sh \
-                    --stage 1 \
-                    --stop_stage 6 \
-                    --train_set "${train_set}" \
-                    --dev_set "${valid_set}" \
-                    --nclusters "${n_clusters}" \
-                    --feature_type "${feats_km}" \
-                    --layer "${layer}" \
-                    --datadir "${data_feats}" \
-                    --km_dir "${expdir}/kmeans_iter${iter}_${feats_km}_${train_set}_portion${portion_km}" \
-                    --portion "${portion_km}" \
-                    --dictdir "${dictdir}" \
-                    --use_gpu ${gpu_kmeans} \
-                    --nj ${nj} \
-                    --wave_file_path_prefix ${wave_file_path_prefix} \
-                    ${alignment_phoneme_dir:+--alignment_phoneme_dir ${alignment_phoneme_dir}}
-            else
-                ./local/perform_kmeans.sh \
-                    --stage 2 \
-                    --stop_stage 6 \
-                    --train_set "${train_set}" \
-                    --dev_set "${valid_set}" \
-                    --nclusters "${n_clusters}" \
-                    --feature_type "${feats_km}" \
-                    --layer "${layer}" \
-                    --datadir "${data_feats}" \
-                    --km_dir "${expdir}/${km_tag}" \
-                    --portion "${portion_km}" \
-                    --dictdir "${dictdir}" \
-                    --use_gpu ${gpu_kmeans} \
-                    --nj ${nj} \
-                    --hubert_url espnet \
-                    --hubert_dir_path "${pretrained_ssl_exp}"/valid.loss.best.pth \
-                    --wave_file_path_prefix ${wave_file_path_prefix} \
-                    ${alignment_phoneme_dir:+--alignment_phoneme_dir ${alignment_phoneme_dir}}
+            _opts=
+            if [ ${iter} -ge 1 ]; then
+                if ! "${gpu_dump_feature}"; then
+                    log "Warning: It is recommented to use GPU in HuBERT feature extraction for K-means clustering."
+                fi
+                _opts+="--use_gpu ${gpu_dump_feature} "
+
+                pretrained_ssl_tag="$(basename "${train_config_list[${iter}-1]}" .yaml)_${feats_type}"
+                pretrained_ssl_exp="${expdir}/hubert_iter$(( iter-1 ))_${pretrained_ssl_tag}"
+
+                _opts+="--hubert_url espnet "
+                _opts+="--hubert_dir_path ${pretrained_ssl_exp}/${inference_ssl_model} "
             fi
+
+            ./local/perform_kmeans.sh \
+                --stage 1 \
+                --stop_stage 5 \
+                --train_set "${train_set}" \
+                --dev_set "${valid_set}" \
+                --nclusters "${n_clusters}" \
+                --feature_type "${feats_km}" \
+                --layer "${layer}" \
+                --datadir "${data_feats}" \
+                --feat_dir "${dumpdir}/hubert_feats" \
+                --km_dir "${expdir}/${km_tag}" \
+                --portion "${portion_km}" \
+                --dictdir "${token_listdir}" \
+                --nj ${nj} \
+                ${alignment_phoneme_dir:+--alignment_phoneme_dir ${alignment_phoneme_dir}} \
+                ${_opts} || exit 1;
         fi
 
         if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
@@ -477,7 +447,7 @@ if ! "${skip_train}"; then
                     --use_preprocessor true \
                     --normalize none \
                     --token_type "${token_type}" \
-                    --token_list "${dictdir}/tokens.txt" \
+                    --token_list "${token_listdir}/tokens.txt" \
                     --num_classes "${n_clusters}" \
                     --train_data_path_and_name_and_type "${_ssl_train_dir}/${_scp},speech,${_type}" \
                     --train_data_path_and_name_and_type "${_ssl_train_dir}/text.km.${km_tag},text,text" \
@@ -498,12 +468,12 @@ if ! "${skip_train}"; then
 
             # Append the num-tokens at the last dimensions. This is used for batch-bins count
             <"${ssl_stats_dir}/train/text_shape" \
-             awk -v N="$(<${dictdir}/tokens.txt wc -l)" '{ print $0 "," N }' \
-             >"${ssl_stats_dir}/train/text_shape.${token_type}"
+                awk -v N="$(<${token_listdir}/tokens.txt wc -l)" '{ print $0 "," N }' \
+                >"${ssl_stats_dir}/train/text_shape.${token_type}"
 
             <"${ssl_stats_dir}/valid/text_shape" \
-             awk -v N="$(<${dictdir}/tokens.txt wc -l)" '{ print $0 "," N }' \
-             >"${ssl_stats_dir}/valid/text_shape.${token_type}"
+                awk -v N="$(<${token_listdir}/tokens.txt wc -l)" '{ print $0 "," N }' \
+                >"${ssl_stats_dir}/valid/text_shape.${token_type}"
         fi
 
         if [ ${stage} -le 7 ] && [ ${stop_stage} -ge 7 ]; then
@@ -536,6 +506,10 @@ if ! "${skip_train}"; then
                 _fold_length="${speech_fold_length}"
                 _input_size="$(<${_ssl_train_dir}/feats_dim)"
                 _opts+="--input_size=${_input_size} "
+            fi
+            if [ "${feats_normalize}" = global_mvn ]; then
+                # Default normalization is utterance_mvn and changes to global_mvn
+                _opts+="--normalize=global_mvn --normalize_conf stats_file=${asr_stats_dir}/train/feats_stats.npz "
             fi
 
             if [ "${num_splits_ssl}" -gt 1 ]; then
@@ -596,7 +570,7 @@ if ! "${skip_train}"; then
                     --use_preprocessor true \
                     --normalize null \
                     --token_type "${token_type}" \
-                    --token_list "${dictdir}/tokens.txt" \
+                    --token_list "${token_listdir}/tokens.txt" \
                     --num_classes "${n_clusters}" \
                     --valid_data_path_and_name_and_type "${_ssl_valid_dir}/${_scp},speech,${_type}" \
                     --valid_data_path_and_name_and_type "${_ssl_valid_dir}/text.km.${km_tag},text,text" \
@@ -613,6 +587,84 @@ if ! "${skip_train}"; then
     done
 else
     log "Skip the training stages"
+fi
+
+if [ -n "${ssl_config}" ]; then
+    ssl_tag="$(basename "${ssl_config}" .yaml)_${feats_type}"
+else
+    ssl_tag="train_${feats_type}"
+fi
+ssl_exp="${expdir}/hubert_iter${train_stop_iter}_${ssl_tag}"
+km_tag="kmeans_iter${train_stop_iter}_${feature_list[${train_stop_iter}]}_${train_set}_portion${portion_km}"
+packed_model="${ssl_exp}/${ssl_exp##*/}_${inference_ssl_model%.*}.zip"
+# Skip pack preparation if using a downloaded model
+if [ ${stage} -le 8 ] && [ ${stop_stage} -ge 8 ]; then
+    log "Stage 8: Pack model: ${packed_model}"
+
+    _opts=
+    if [ "${feats_normalize}" = global_mvn ]; then
+        _opts+="--option ${asr_stats_dir}/train/feats_stats.npz "
+    fi
+    # shellcheck disable=SC2086
+    ${python} -m espnet2.bin.pack ssl \
+        --train_config "${ssl_exp}"/config.yaml \
+        --model_file "${ssl_exp}"/"${inference_ssl_model}" \
+        ${_opts} \
+        --option "${ssl_exp}"/images \
+        --option "${expdir}/${km_tag}/km_${n_clusters_list[${train_stop_iter}]}.mdl" \
+        --outpath "${packed_model}"
+fi
+
+if ! "${skip_upload_hf}"; then
+    if [ ${stage} -le 9 ] && [ ${stop_stage} -ge 9 ]; then
+        [ -z "${hf_repo}" ] && \
+            log "ERROR: You need to setup the variable hf_repo with the name of the repository located at HuggingFace, follow the following steps described here https://github.com/espnet/espnet/blob/master/CONTRIBUTING.md#132-espnet2-recipes" && \
+        exit 1
+        log "Stage 9: Upload model to HuggingFace: ${hf_repo}"
+
+        gitlfs=$(git lfs --version 2> /dev/null || true)
+        [ -z "${gitlfs}" ] && \
+            log "ERROR: You need to install git-lfs first" && \
+            exit 1
+
+        dir_repo=${expdir}/hf_${hf_repo//"/"/"_"}
+        [ ! -d "${dir_repo}" ] && git clone https://huggingface.co/${hf_repo} ${dir_repo}
+
+        if command -v git &> /dev/null; then
+            _creator_name="$(git config user.name)"
+            _checkout="git checkout $(git show -s --format=%H)"
+        else
+            _creator_name="$(whoami)"
+            _checkout=""
+        fi
+        # /some/where/espnet/egs2/foo/asr1/ -> foo/asr1
+        _task="$(pwd | rev | cut -d/ -f2 | rev)"
+        # foo/asr1 -> foo
+        _corpus="${_task%/*}"
+        _model_name="${_creator_name}/${_corpus}_$(basename ${packed_model} .zip)"
+
+        # copy files in ${dir_repo}
+        unzip -o ${packed_model} -d ${dir_repo}
+        # Generate description file
+        # shellcheck disable=SC2034
+        hf_task=self-supervised-learning
+        # shellcheck disable=SC2034
+        espnet_task=SSL
+        # shellcheck disable=SC2034
+        task_exp=${ssl_exp}
+        eval "echo \"$(cat scripts/utils/TEMPLATE_HF_Readme.md)\"" > "${dir_repo}"/README.md
+
+        this_folder=${PWD}
+        cd ${dir_repo}
+        if [ -n "$(git status --porcelain)" ]; then
+            git add .
+            git commit -m "Update model"
+        fi
+        git push
+        cd ${this_folder}
+    fi
+else
+    log "Skip the uploading to HuggingFace stage"
 fi
 
 log "Successfully finished. [elapsed=${SECONDS}s]"

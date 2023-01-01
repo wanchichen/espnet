@@ -6,13 +6,17 @@
 #     Paper: https://arxiv.org/pdf/2106.07447.pdf
 #     Code in Fairseq: https://github.com/pytorch/fairseq/tree/master/examples/hubert
 
+import argparse
 import logging
 import os
+import random
 import sys
 
 import joblib
 import numpy as np
 from sklearn.cluster import MiniBatchKMeans
+
+from espnet.utils.cli_readers import file_reader_helper
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -21,6 +25,39 @@ logging.basicConfig(
     stream=sys.stdout,
 )
 logger = logging.getLogger("learn_kmeans")
+
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--km_path", type=str, required=True)
+    parser.add_argument("--n_clusters", type=int, required=True)
+    parser.add_argument("--seed", default=0, type=int)
+    parser.add_argument(
+        "--percent", default=-1, type=float, help="sample a subset; -1 for all"
+    )
+    parser.add_argument("--init", default="k-means++")
+    parser.add_argument("--max_iter", default=100, type=int)
+    parser.add_argument("--batch_size", default=10000, type=int)
+    parser.add_argument("--tol", default=0.0, type=float)
+    parser.add_argument("--max_no_improvement", default=100, type=int)
+    parser.add_argument("--n_init", default=20, type=int)
+    parser.add_argument("--reassignment_ratio", default=0.0, type=float)
+
+    parser.add_argument(
+        "--in_filetype",
+        type=str,
+        default="sound",
+        choices=["mat", "hdf5", "sound.hdf5", "sound"],
+        help="Specify the file format for the rspecifier. "
+        '"mat" is the matrix format in kaldi',
+    )
+    parser.add_argument(
+        "rspecifier",
+        type=str,
+        nargs="+",
+        help="Read specifier for feats. e.g. ark:some.ark",
+    )
+    return parser
 
 
 def get_km_model(
@@ -48,37 +85,37 @@ def get_km_model(
     )
 
 
-def load_feature_shard(feat_dir, split, nshard, rank, percent):
-    feat_path = f"{feat_dir}/{split}_{rank}_{nshard}.npy"
-    leng_path = f"{feat_dir}/{split}_{rank}_{nshard}.len"
-    with open(leng_path, "r") as f:
-        lengs = [int(line.rstrip()) for line in f]
-        offsets = [0] + np.cumsum(lengs[:-1]).tolist()
+def load_feature_shard(rspecifier, in_filetype, percent):
 
+    feats = []
+    for utt, feat in file_reader_helper(rspecifier, in_filetype):
+        feats.append(feat)
     if percent < 0:
-        return np.load(feat_path, mmap_mode="r")
+        return np.concatenate(feats, axis=0)
     else:
-        nsample = int(np.ceil(len(lengs) * percent))
-        indices = np.random.choice(len(lengs), nsample, replace=False)
-        feat = np.load(feat_path, mmap_mode="r")
+        nsample = int(np.ceil(len(feats) * percent))
+        sampled_feat = random.sample(feats, nsample)
         sampled_feat = np.concatenate(
-            [feat[offsets[i] : offsets[i] + lengs[i]] for i in indices], axis=0
+            sampled_feat,
+            axis=0,
         )
         logger.info(
             (
                 f"sampled {nsample} utterances, {len(sampled_feat)} frames "
-                f"from shard {rank}/{nshard}"
+                f"from rspecifier {rspecifier}"
             )
         )
         return sampled_feat
 
 
-def load_feature(feat_dir, split, nshard, seed, percent):
+def load_feature(rspecifiers, in_filetype, percent):
     assert percent <= 1.0
+    if not isinstance(rspecifiers, list):
+        rspecifiers = [rspecifiers]
     feat = np.concatenate(
         [
-            load_feature_shard(feat_dir, split, nshard, r, percent)
-            for r in range(nshard)
+            load_feature_shard(rspecifier, in_filetype, percent)
+            for rspecifier in rspecifiers
         ],
         axis=0,
     )
@@ -87,9 +124,8 @@ def load_feature(feat_dir, split, nshard, seed, percent):
 
 
 def learn_kmeans(
-    feat_dir,
-    split,
-    nshard,
+    rspecifier,
+    in_filetype,
     km_path,
     n_clusters,
     seed,
@@ -103,7 +139,7 @@ def learn_kmeans(
     max_no_improvement,
 ):
     np.random.seed(seed)
-    feat = load_feature(feat_dir, split, nshard, seed, percent)
+    feat = load_feature(rspecifier, in_filetype, percent)
     km_model = get_km_model(
         n_clusters,
         init,
@@ -123,25 +159,7 @@ def learn_kmeans(
 
 
 if __name__ == "__main__":
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--feat_dir", type=str, required=True)
-    parser.add_argument("--split", type=str, required=True)
-    parser.add_argument("--nshard", type=int, required=True)
-    parser.add_argument("--km_path", type=str, required=True)
-    parser.add_argument("--n_clusters", type=int, required=True)
-    parser.add_argument("--seed", default=0, type=int)
-    parser.add_argument(
-        "--percent", default=-1, type=float, help="sample a subset; -1 for all"
-    )
-    parser.add_argument("--init", default="k-means++")
-    parser.add_argument("--max_iter", default=100, type=int)
-    parser.add_argument("--batch_size", default=10000, type=int)
-    parser.add_argument("--tol", default=0.0, type=float)
-    parser.add_argument("--max_no_improvement", default=100, type=int)
-    parser.add_argument("--n_init", default=20, type=int)
-    parser.add_argument("--reassignment_ratio", default=0.0, type=float)
+    parser = get_parser()
     args = parser.parse_args()
     logging.info(str(args))
 

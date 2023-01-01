@@ -1,7 +1,7 @@
 use_amp: true
 grad_clip: 5.0
 batch_type: numel
-batch_bins: 40000000
+batch_bins: 45000000
 num_workers: 64
 accum_grad: 2
 max_epoch: 400

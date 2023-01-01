@@ -137,7 +137,7 @@ fi
 if python3 -c 'import fairseq; import torch as t; from packaging.version import parse as L; assert L(t.__version__) >= L("1.12.0")' &> /dev/null; then
     cd ./egs2/mini_an4/ssl1
     echo "==== [ESPnet2] SSL1/HUBERT ==="
-    ./run.sh --ngpu 0 --stage 1 --stop-stage 7 --feats-type "raw" --token_type "word" --skip-upload false \
+    ./run.sh --ngpu 0 --stage 1 --stop-stage 7 --feats-type "raw" --token_type "word" --skip_upload_hf false \
         --hubert-args "--max_epoch=1" --python "${python}"
     # Remove generated files in order to reduce the disk usage
     rm -rf exp dump data

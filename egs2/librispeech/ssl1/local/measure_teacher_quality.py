@@ -6,7 +6,7 @@
 #     Paper: https://arxiv.org/pdf/2106.07447.pdf
 #     Code in Fairseq: https://github.com/pytorch/fairseq/tree/master/examples/hubert
 
-import os.path as op
+import argparse
 import re
 from collections import Counter
 
@@ -14,6 +14,28 @@ import numpy as np
 from tabulate import tabulate
 
 from espnet2.utils.types import str2bool
+
+
+def get_parser():
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--lab_dir", type=str, required=True)
+    parser.add_argument("--lab_name", type=str, required=True)
+    parser.add_argument("--lab_sets", default=["valid"], type=str, nargs="+")
+    parser.add_argument(
+        "--phn_dir",
+        default="data/librispeech_phoneme_alignment",
+    )
+    parser.add_argument(
+        "--phn_sets", default=["dev-clean", "dev-other"], type=str, nargs="+"
+    )
+    parser.add_argument("--pad_len", default=0, type=int, help="padding for hypotheses")
+    parser.add_argument(
+        "--upsample", default=1, type=int, help="upsample factor for hypotheses"
+    )
+    parser.add_argument("--ref_lab_dir", default="")
+    parser.add_argument("--ref_lab_name", default="")
+    parser.add_argument("--verbose", type=str2bool, default=False)
+    return parser
 
 
 def comp_purity(p_xy, axis):
@@ -103,29 +125,19 @@ def read_phn(tsv_path, rm_stress=True):
     return uid2phns
 
 
-def read_lab(tsv_path, lab_path, pad_len=0, upsample=1, remove_uid_from_lab=False):
-    """
-    tsv is needed to retrieve the uids for the labels
-    """
-    with open(tsv_path) as f:
-        f.readline()
-        uids = [op.splitext(op.basename(line.rstrip().split()[0]))[0] for line in f]
-    if not remove_uid_from_lab:
-        with open(lab_path) as f:
-            labs_list = [
-                pad(line.rstrip().split(), pad_len).repeat(upsample) for line in f
-            ]
-    else:
-        with open(lab_path) as f:
-            labs_list = [
-                pad(line.rstrip().split()[1:], pad_len).repeat(upsample) for line in f
-            ]
-    assert len(uids) == len(labs_list)
-    return dict(zip(uids, labs_list))
+def read_lab(lab_path, pad_len=0, upsample=1):
+    with open(lab_path) as f:
+        labs_list = [
+            (
+                line.rstrip().split()[0],
+                pad(line.rstrip().split()[1:], pad_len).repeat(upsample),
+            )
+            for line in f
+        ]
+    return dict(labs_list)
 
 
 def main_lab_lab(
-    tsv_dir,
     lab_dir,
     lab_name,
     lab_sets,
@@ -135,25 +147,23 @@ def main_lab_lab(
     upsample=1,
     verbose=False,
 ):
-    # assume tsv_dir is the same for both the reference and the hypotheses
-    tsv_dir = lab_dir if tsv_dir is None else tsv_dir
-
     uid2refs = {}
     for s in lab_sets:
-        uid2refs.update(read_lab(f"{tsv_dir}/{s}.tsv", f"{ref_dir}/{s}.{ref_name}"))
+        uid2refs.update(read_lab(f"{ref_dir}/{s}.{ref_name}"))
 
     uid2hyps = {}
     for s in lab_sets:
         uid2hyps.update(
             read_lab(
-                f"{tsv_dir}/{s}.tsv", f"{lab_dir}/{s}.{lab_name}", pad_len, upsample
+                f"{lab_dir}/{s}.{lab_name}",
+                pad_len,
+                upsample,
             )
         )
     _main(uid2refs, uid2hyps, verbose)
 
 
 def main_phn_lab(
-    tsv_dir,
     lab_dir,
     lab_name,
     lab_sets,
@@ -161,7 +171,6 @@ def main_phn_lab(
     phn_sets,
     pad_len=0,
     upsample=1,
-    remove_uid_from_lab=False,
     verbose=False,
 ):
     uid2refs = {}
@@ -169,15 +178,12 @@ def main_phn_lab(
         uid2refs.update(read_phn(f"{phn_dir}/{s}.tsv"))
 
     uid2hyps = {}
-    tsv_dir = lab_dir if tsv_dir is None else tsv_dir
     for s in lab_sets:
         uid2hyps.update(
             read_lab(
-                f"{tsv_dir}/{s}/wav.tsv",
                 f"{lab_dir}/{s}/{lab_name}",
                 pad_len,
                 upsample,
-                remove_uid_from_lab,
             )
         )
     _main(uid2refs, uid2hyps, verbose)
@@ -212,38 +218,11 @@ if __name__ == "__main__":
     """
     compute quality of labels with respect to phone or another labels if set
     """
-    import argparse
-
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--tsv_dir", type=str, required=True)
-    parser.add_argument("--lab_dir", type=str, required=True)
-    parser.add_argument("--lab_name", type=str, required=True)
-    parser.add_argument("--lab_sets", default=["valid"], type=str, nargs="+")
-    parser.add_argument(
-        "--phn_dir",
-        default="data/librispeech_phoneme_alignment",
-    )
-    parser.add_argument(
-        "--phn_sets", default=["dev-clean", "dev-other"], type=str, nargs="+"
-    )
-    parser.add_argument("--pad_len", default=0, type=int, help="padding for hypotheses")
-    parser.add_argument(
-        "--upsample", default=1, type=int, help="upsample factor for hypotheses"
-    )
-    parser.add_argument("--ref_lab_dir", default="")
-    parser.add_argument("--ref_lab_name", default="")
-    parser.add_argument(
-        "--remove_uid_from_lab",
-        type=str2bool,
-        default=False,
-        help="remove the first field (utt_id) in kaldi style text",
-    )
-    parser.add_argument("--verbose", type=str2bool, default=False)
+    parser = get_parser()
     args = parser.parse_args()
 
     if args.ref_lab_dir and args.ref_lab_name:
         main_lab_lab(
-            args.tsv_dir,
             args.lab_dir,
             args.lab_name,
             args.lab_sets,
@@ -255,7 +234,6 @@ if __name__ == "__main__":
         )
     else:
         main_phn_lab(
-            args.tsv_dir,
             args.lab_dir,
             args.lab_name,
             args.lab_sets,
@@ -263,6 +241,5 @@ if __name__ == "__main__":
             args.phn_sets,
             args.pad_len,
             args.upsample,
-            args.remove_uid_from_lab,
             args.verbose,
         )

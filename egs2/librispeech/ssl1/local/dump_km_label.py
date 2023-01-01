@@ -15,9 +15,10 @@ import sys
 import joblib
 import numpy as np
 import torch
-import tqdm
 
 from espnet2.utils.types import str2bool
+from espnet.utils.cli_readers import file_reader_helper
+from espnet.utils.cli_writers import file_writer_helper
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -30,13 +31,31 @@ logger = logging.getLogger("dump_km_label")
 
 def get_parser():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--feat_dir", type=str, required=True)
-    parser.add_argument("--split", type=str, required=True)
     parser.add_argument("--km_path", type=str, required=True)
-    parser.add_argument("--nshard", type=int, required=True)
-    parser.add_argument("--rank", type=str, required=True)
-    parser.add_argument("--lab_dir", type=str, required=True)
     parser.add_argument("--use_gpu", type=str2bool, default=False)
+
+    parser.add_argument(
+        "--in_filetype",
+        type=str,
+        default="sound",
+        choices=["mat", "hdf5", "sound.hdf5", "sound"],
+        help="Specify the file format for the rspecifier. "
+        '"mat" is the matrix format in kaldi',
+    )
+    parser.add_argument(
+        "--out_filetype",
+        type=str,
+        default="mat",
+        choices=["mat", "hdf5", "sound.hdf5", "sound"],
+        help="Specify the file format for the rspecifier. "
+        '"mat" is the matrix format in kaldi',
+    )
+    parser.add_argument(
+        "rspecifier", type=str, help="Read specifier for feats. e.g. ark:some.ark"
+    )
+    parser.add_argument(
+        "wspecifier", type=str, help="Write specifier for labels. e.g. ark,t:some.txt"
+    )
 
     return parser
 
@@ -69,40 +88,22 @@ class ApplyKmeans(object):
             return np.argmin(dist, axis=1)
 
 
-def get_feat_iterator(feat_dir, split, nshard, rank):
-    feat_path = f"{feat_dir}/{split}_{rank}_{nshard}.npy"
-    leng_path = f"{feat_dir}/{split}_{rank}_{nshard}.len"
-    with open(leng_path, "r") as f:
-        lengs = [int(line.rstrip()) for line in f]
-        offsets = [0] + np.cumsum(lengs[:-1]).tolist()
-
-    def iterate():
-        feat = np.load(feat_path, mmap_mode="r")
-        assert feat.shape[0] == (offsets[-1] + lengs[-1])
-        for offset, leng in zip(offsets, lengs):
-            yield feat[offset : offset + leng]
-
-    return iterate, len(lengs)
-
-
-def dump_label(feat_dir, split, km_path, nshard, rank, lab_dir, use_gpu):
+def dump_label(rspecifier, in_filetype, wspecifier, out_filetype, km_path, use_gpu):
     apply_kmeans = ApplyKmeans(km_path, use_gpu=use_gpu)
-    generator, num = get_feat_iterator(feat_dir, split, nshard, rank)
-    iterator = generator()
 
-    lab_path = f"{lab_dir}/{split}_{rank}_{nshard}.km"
-    os.makedirs(lab_dir, exist_ok=True)
-    with open(lab_path, "w") as f:
-        for feat in tqdm.tqdm(iterator, total=num):
-            lab = apply_kmeans(feat).tolist()
-            f.write(" ".join(map(str, lab)) + "\n")
+    with file_writer_helper(
+        wspecifier,
+        filetype=out_filetype,
+    ) as writer:
+        for utt, feat in file_reader_helper(rspecifier, in_filetype):
+            lab = apply_kmeans(feat)
+            writer[utt] = lab
     logger.info("finished successfully")
 
 
 if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
-    args.rank = eval(args.rank)
     logging.info(str(args))
 
     dump_label(**vars(args))

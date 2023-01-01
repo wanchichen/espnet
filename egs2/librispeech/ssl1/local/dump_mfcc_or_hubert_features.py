@@ -8,17 +8,17 @@
 
 import argparse
 import logging
-import os
-from multiprocessing.sharedctypes import Value
-from random import sample
 
 import numpy as np
-import tqdm
 from hubert_feature_loader import (
     ESPnetHubertFeatureReader,
     HubertFeatureReader,
     MfccFeatureReader,
 )
+
+from espnet.utils.cli_readers import file_reader_helper
+from espnet.utils.cli_utils import is_scipy_wav_style
+from espnet.utils.cli_writers import file_writer_helper
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -30,23 +30,11 @@ logger = logging.getLogger("sklearn_kmeans")
 def get_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        "--data_dir",
-        type=str,
-        required=True,
-        help="folder contains wav.scp for training.",
-    )
-    parser.add_argument(
-        "--feat_dir", type=str, required=True, help="folder to save extracted features."
-    )
-    parser.add_argument("--split", type=str, default=None, required=True)
-    parser.add_argument(
         "--feature_type", type=str, default="mfcc", choices=["mfcc", "hubert"]
     )
     parser.add_argument("--hubert-model-url", type=str, default=None)
     parser.add_argument("--hubert-model-path", type=str, default=None)
     parser.add_argument("--layer", type=int, default=None)
-    parser.add_argument("--nshard", type=int, default=None, required=True)
-    parser.add_argument("--rank", type=str, default=None, required=True)
     parser.add_argument("--sample_rate", type=int, default=16000)
     parser.add_argument("--max_chunk", type=int, default=1600000)
     parser.add_argument("--seed", default=0, type=int)
@@ -57,52 +45,51 @@ def get_parser():
         choices=["espnet", "fairseq"],
         help="Whether the HuBERT encoder implementation is based on espnet or fairseq.",
     )
+    parser.add_argument(
+        "--in_filetype",
+        type=str,
+        default="sound",
+        choices=["mat", "hdf5", "sound.hdf5", "sound"],
+        help="Specify the file format for the rspecifier. "
+        '"mat" is the matrix format in kaldi',
+    )
+    parser.add_argument(
+        "--out_filetype",
+        type=str,
+        default="npy",
+        choices=["npy", "mat", "hdf5"],
+        help="Specify the file format for the wspecifier. "
+        '"npy" is the matrix format in kaldi',
+    )
+    parser.add_argument(
+        "--write_num_frames", type=str, help="Specify wspecifer for utt2num_frames"
+    )
+    parser.add_argument(
+        "rspecifier", type=str, help="Read specifier for feats. e.g. ark:some.ark"
+    )
+    parser.add_argument(
+        "wspecifier", type=str, help="Write specifier. e.g. ark:some.ark"
+    )
 
     return parser
 
 
-def get_shard_range(tot, nshard, rank):
-    assert rank < nshard and rank >= 0, f"invaid rank/nshard {rank}/{nshard}"
-    start = round(tot / nshard * rank)
-    end = round(tot / nshard * (rank + 1))
-    assert start < end, f"start={start}, end={end}"
-    logger.info(
-        f"rank {rank} of {nshard}, process {end-start} " f"({start}-{end}) out of {tot}"
-    )
-    return start, end
-
-
-def get_path_iterator(tsv, nshard, rank):
-    with open(tsv, "r") as f:
-        root = f.readline().rstrip()
-        lines = [line.rstrip() for line in f]
-        start, end = get_shard_range(len(lines), nshard, rank)
-        lines = lines[start:end]
-
-        def iterate():
-            for line in lines:
-                subpath, nsample = line.split("\t")
-                yield f"{root}/{subpath}", int(nsample)
-
-    return iterate, len(lines)
-
-
-def dump_feature(reader, generator, num, split, nshard, rank, feat_dir):
-    iterator = generator()
-
-    feat_path = f"{feat_dir}/{split}_{rank}_{nshard}.npy"
-    leng_path = f"{feat_dir}/{split}_{rank}_{nshard}.len"
-
-    os.makedirs(feat_dir, exist_ok=True)
-    if os.path.exists(feat_path):
-        os.remove(feat_path)
-
-    feat_f = NpyAppendArray(feat_path)
-    with open(leng_path, "w") as leng_f:
-        for path, nsample in tqdm.tqdm(iterator, total=num):
-            feat = reader.get_feats(path, nsample)
-            feat_f.append(feat.cpu().numpy())
-            leng_f.write(f"{len(feat)}\n")
+def dump_feature(
+    reader, in_filetype, rspecifier, out_filetype, wspecifier, write_num_frames=None
+):
+    with file_writer_helper(
+        wspecifier,
+        filetype=out_filetype,
+        write_num_frames=write_num_frames,
+    ) as writer:
+        for utt, mat in file_reader_helper(rspecifier, in_filetype):
+            if is_scipy_wav_style(mat):
+                # If data is sound file, then got as Tuple[int, ndarray]
+                rate, mat = mat
+                mat = mat.astype(np.float64, order="C") / 32768.0
+            nsample = len(mat)
+            feat = reader.get_feats(mat, nsample).numpy()
+            writer[utt] = feat
     logger.info("finished successfully")
 
 
@@ -136,26 +123,19 @@ def main(args):
     else:
         raise ValueError(f"Unknown feature type {args.feature_type}.")
 
-    generator, num = get_path_iterator(
-        f"{args.data_dir}/{args.split}.tsv", args.nshard, args.rank
-    )
     dump_feature(
-        reader, generator, num, args.split, args.nshard, args.rank, args.feat_dir
+        reader,
+        in_filetype=args.in_filetype,
+        rspecifier=args.rspecifier,
+        out_filetype=args.out_filetype,
+        wspecifier=args.wspecifier,
+        write_num_frames=args.write_num_frames,
     )
 
 
 if __name__ == "__main__":
-
-    try:
-        from npy_append_array import NpyAppendArray
-    except Exception as e:
-        print("Error: npy_append_array is not properly installed.")
-        print("Please run: . ./path.sh && python -m pip install npy_append_array")
-        raise e
-
     parser = get_parser()
     args = parser.parse_args()
-    args.rank = eval(args.rank)
 
     logging.info(str(args))
 

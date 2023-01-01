@@ -12,6 +12,7 @@ log() {
 
 stage=1
 stop_stage=100
+python=python3       # Specify python to execute espnet commands.
 train_set=
 dev_set=
 datadir=dump/raw
@@ -19,7 +20,6 @@ feat_dir=dump/hubert_feats
 km_dir=
 dictdir=
 alignment_phoneme_dir=
-wave_file_path_prefix=   # The root prefix regarding to items in dump/org/${dset}/wav.scp,  e.g. ${LIBRISPEECH}/LibriSpeech
 phn_sets="dev-other dev-clean"
 use_gpu=false
 
@@ -62,20 +62,9 @@ else
     use_gpu=false  # mfcc feature does not require GPU.
 fi
 
+
 if [ ${stage} -le 1 ] && [ ${stop_stage} -ge 1 ]; then
-    log "stage 1: Preprocess data to generate tsv files."
-
-    for dset in "${train_set}" "${dev_set}"; do
-        echo "${wave_file_path_prefix}" > "${datadir}"/${dset}/wav.tsv
-
-        paste "${datadir}/${dset}"/wav.scp "${datadir}/${dset}"/utt2num_samples | \
-            awk '{print($2 "\t" $4)}' | sed "s=${wave_file_path_prefix}/==" >> "${datadir}/${dset}"/wav.tsv
-    done
-
-fi
-
-if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
-    log "stage 2: Dump ${feature_type} feature"
+    log "stage 1: Dump ${feature_type} feature"
 
     if ${use_gpu}; then
         _cmd="${cuda_cmd}"
@@ -88,95 +77,114 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
     for dset in "${train_set}" "${dev_set}"; do
         echo "${dset}"
 
+        # 1. Split the key file
+        output_dir="${feat_dir}/${feature_type}/${suffix}${dset}/data"
+        mkdir -p "${output_dir}"
+        _logdir="${feat_dir}/${feature_type}/${suffix}${dset}/logdir"
+        mkdir -p "${_logdir}"
         nutt=$(<"${datadir}/${dset}"/wav.scp wc -l)
         _nj=$((nj<nutt?nj:nutt))
 
+        key_file="${datadir}/${dset}"/wav.scp
+        split_scps=""
+        for n in $(seq ${_nj}); do
+            split_scps+=" ${_logdir}/wav.${n}.scp"
+        done
+        # shellcheck disable=SC2086
+        utils/split_scp.pl "${key_file}" ${split_scps}
+
         # shellcheck disableSC2046,SC2086
-        ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${feat_dir}/${feature_type}/${suffix}${dset}"/log/dump_feats.JOB.log \
+        ${_cmd} --gpu "${_ngpu}" JOB=1:"${_nj}" "${_logdir}"/dump_feats.JOB.log \
             ${python} local/dump_mfcc_or_hubert_features.py \
-                --data_dir "${datadir}/${dset}" \
-                --split "wav" \
-                --feat_dir "${feat_dir}/${feature_type}/${suffix}${dset}/data" \
+                --in_filetype "sound" \
+                --out_filetype "mat" \
                 --feature_type "${feature_type}" \
                 --hubert_type "${hubert_type}" \
                 --hubert-model-url "${hubert_url}" \
                 --hubert-model-path "${hubert_dir_path}" \
                 --layer "${layer}" \
-                --nshard "${_nj}" \
-                --rank "JOB-1" || exit 1;
+                --write_num_frames "ark,t:${_logdir}/utt2num_frames.JOB" \
+                "scp:${_logdir}/wav.JOB.scp" \
+                "ark,scp:${output_dir}/feats.JOB.ark,${output_dir}/feats.JOB.scp" || exit 1;
+
+        # concatenate scp files
+        for n in $(seq ${_nj}); do
+            cat ${output_dir}/feats.${n}.scp || exit 1;
+        done > ${output_dir}/../feats.scp || exit 1
+
+        for n in $(seq ${_nj}); do
+            cat ${_logdir}/utt2num_frames.$n || exit 1;
+        done > ${output_dir}/../utt2num_frames || exit 1
+        rm ${_logdir}/utt2num_frames.*
+
     done
 
 fi
 
-if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
-    log "stage 3: Learn K-means with ${feature_type} feature based on scikit-learn"
+if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
+    log "stage 2: Learn K-means with ${feature_type} feature based on scikit-learn"
 
-    mkdir -p "${km_dir}/model"
+    _logdir="${km_dir}/logdir"
+    mkdir -p ${_logdir}
 
-    nutt=$(<"${datadir}/${train_set}"/wav.scp wc -l)
-    _nj=$((nj<nutt?nj:nutt))
+    # select portion of data
+    nutt=$(<"${feat_dir}/${feature_type}/${suffix}${train_set}"/feats.scp wc -l)
+    portion_nutt=$(echo ${nutt} ${portion} | awk '{print(int($1 * $2 + 0.9))}')  # get ceil value
+    subset_scp.pl \
+        ${portion_nutt} ${feat_dir}/${feature_type}/${suffix}${train_set}/feats.scp \
+        > "${km_dir}/train.scp" || exit 1;
+    log "Subsampling ${portion_nutt} utterances for Kmeans training."
 
-    ${train_cmd} ${km_dir}/log/learn_kmeans.log \
-        python local/learn_kmeans.py \
-            --feat_dir "${feat_dir}/${feature_type}/${suffix}${train_set}/data" \
-            --split "wav" \
-            --nshard ${_nj} \
+    ${train_cmd} ${_logdir}/learn_kmeans.log \
+        ${python} local/learn_kmeans.py \
+            --in_filetype mat \
             --km_path ${km_dir}/km_${nclusters}.mdl \
             --n_clusters ${nclusters} \
-            --percent ${portion} || exit 1;
+            --percent -1 \
+            "scp:${km_dir}/train.scp" || exit 1;
 
 fi
 
-if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
-    log "stage 4: Generate K-means pseudo-labels"
+if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
+    log "stage 3: Generate K-means pseudo-labels"
 
     for dset in ${train_set} ${dev_set}; do
-        label_dir="${km_dir}/pseudo_labels/${dset}"
+        echo ${dset}
+        label_dir="${feat_dir}/${feature_type}/${suffix}${dset}/pseudo_labels"
 
-        if [[ -d "${label_dir}" ]]; then
-            echo "${label_dir} already exists, will remove it"
-            rm -r ${label_dir}
-        fi
-        mkdir -p ${label_dir}
-
-        nutt=$(<"${datadir}/${dset}"/wav.scp wc -l)
+        nutt=$(<"${feat_dir}/${feature_type}/${suffix}${dset}/"feats.scp wc -l)
         _nj=$((nj<nutt?nj:nutt))
 
-        ${train_cmd} JOB=1:${_nj} ${label_dir}/log/dump_km_label.JOB.log \
+        ${train_cmd} JOB=1:${_nj} ${label_dir}/logdir/dump_km_label.JOB.log \
             ${python} local/dump_km_label.py \
-                --feat_dir "${feat_dir}/${feature_type}/${suffix}${dset}/data" \
-                --split "wav" \
                 --km_path "${km_dir}/km_${nclusters}.mdl" \
-                --nshard ${_nj} \
-                --rank "JOB-1" \
-                --lab_dir "${label_dir}" || exit 1;
+                --in_filetype "mat" \
+                --out_filetype "mat" \
+                "scp:${feat_dir}/${feature_type}/${suffix}${dset}/data/feats.JOB.scp" \
+                "ark,t:${label_dir}/logdir/pseudo_labels.JOB.txt" || exit 1;
 
-        for rank in $(seq 0 1 $((_nj - 1))); do
-            cat ${label_dir}/wav_${rank}_${_nj}.km
-        done > ${label_dir}/wav.km
+        # concatenate scp files
+        for n in $(seq ${_nj}); do
+            cat ${label_dir}/logdir/pseudo_labels.${n}.txt || exit 1;
+        done | sed 's/ \[ \| \]//g' > "${label_dir}"/pseudo_labels.txt || exit 1;
 
-        sed '1d' "${datadir}/${dset}"/wav.tsv | \
-            awk '{n=split($1, lst, "/"); uttname=lst[n]; gsub(/\.wav|\.flac/, "", uttname); print(uttname)}' | \
-            paste - ${label_dir}/wav.km > ${label_dir}/pseudo_labels.txt
-
-        cp ${label_dir}/pseudo_labels.txt "${datadir}/${dset}"/text.km.${km_tag}
+        cp "${label_dir}"/pseudo_labels.txt ${datadir}/${dset}/text.km.${km_tag}
 
         utils/fix_data_dir.sh --utt_extra_files "text.km.${km_tag}" ${datadir}/${dset}
     done
 fi
 
-if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
-    log "stage 5: Generate char-based fairseq style dictionary: <token> <count>"
+if [ ${stage} -le 4 ] && [ ${stop_stage} -ge 4 ]; then
+    log "stage 4: Generate char-based fairseq style dictionary: <token> <count>"
     # generate dictionaries
     oov="<unk>"         # Out of vocabulary symbol.
     blank="<blank>"     # CTC blank symbol
     pad="<pad>"
     sos_eos="<sos/eos>" # sos and eos symbole
 
-    label_dir="${km_dir}/pseudo_labels/${train_set}"
     mkdir -p ${dictdir}
 
-    <${label_dir}/pseudo_labels.txt cut -d" " -f2- | \
+    <${datadir}/${dset}/text.km.${km_tag} cut -d" " -f2- | \
         awk '{for (i=1; i<=NF; i++) {count[$i]+=1}} END{for (k in count) {print(k, count[k])}}' | \
             sort -n -r -k 2  | \
             awk -v oov=${oov} -v blank=${blank} -v sos_eos=${sos_eos} -v pad=${pad} \
@@ -188,8 +196,8 @@ if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
 fi
 
 if [ -n "${alignment_phoneme_dir}" ]; then
-    if [ ${stage} -le 6 ] && [ ${stop_stage} -ge 6 ]; then
-        log "Stage 6: Measure qualities of pseudo labels"
+    if [ ${stage} -le 5 ] && [ ${stop_stage} -ge 5 ]; then
+        log "Stage 5: Measure qualities of pseudo labels"
 
         if [ "${feature_type}" = "hubert" ]; then
             upsample=2
@@ -197,8 +205,7 @@ if [ -n "${alignment_phoneme_dir}" ]; then
             upsample=1
         fi
 
-        python local/measure_teacher_quality.py \
-            --tsv_dir ${datadir} \
+        ${python} local/measure_teacher_quality.py \
             --lab_dir ${datadir} \
             --lab_name "text.km.${km_tag}" \
             --lab_sets "${dev_set}" \
@@ -207,8 +214,7 @@ if [ -n "${alignment_phoneme_dir}" ]; then
             --pad_len 0 \
             --upsample ${upsample} \
             --ref_lab_dir "" \
-            --ref_lab_name "" \
-            --remove_uid_from_lab true | tee ${km_dir}/pseudo_labels/phoneme_pseudo_label_quality.txt
+            --ref_lab_name "" | tee ${km_dir}/phoneme_pseudo_label_quality.txt
 
     fi
 fi

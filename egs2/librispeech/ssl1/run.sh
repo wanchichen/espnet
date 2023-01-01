@@ -8,7 +8,7 @@ set -o pipefail
 . ./db.sh
 
 train_start_iter=0
-train_stop_iter=1  # 2 iterations is enough for base model
+train_stop_iter=1  # 1 iterations is enough for base model
 
 n_clusters_iter0=100
 n_clusters_iter1=500
@@ -45,5 +45,5 @@ train_config_iter2=conf/tuning/train_ssl_torchaudiohubert_large_960h_pretrain_it
     --train_set "${train_set}" \
     --valid_set "${valid_set}" \
     --portion_km 0.1 \
-    --alignment_phoneme_dir "./data/librispeech_phoneme_alignment" \
-    --wave_file_path_prefix "${LIBRISPEECH}/LibriSpeech" "$@"
+    --gpu_dump_feature true \
+    --alignment_phoneme_dir "./data/librispeech_phoneme_alignment" "$@"
