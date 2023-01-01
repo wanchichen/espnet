@@ -26,6 +26,7 @@ use_gpu=false
 nclusters=100
 feature_type=mfcc
 layer=
+km_max_iter=300
 
 # Extract intermediate Hubert embedding from official hubert model:
 hubert_type="espnet"  # fairseq or espnet
@@ -135,13 +136,65 @@ if [ ${stage} -le 2 ] && [ ${stop_stage} -ge 2 ]; then
         > "${km_dir}/train.scp" || exit 1;
     log "Subsampling ${portion_nutt} utterances for Kmeans training."
 
-    ${train_cmd} ${_logdir}/learn_kmeans.log \
-        ${python} local/learn_kmeans.py \
-            --in_filetype mat \
-            --km_path ${km_dir}/km_${nclusters}.mdl \
-            --n_clusters ${nclusters} \
-            --percent -1 \
-            "scp:${km_dir}/train.scp" || exit 1;
+    # ${train_cmd} ${_logdir}/learn_kmeans.log \
+    #     ${python} local/learn_kmeans.py \
+    #         --in_filetype mat \
+    #         --km_path ${km_dir}/km_${nclusters}.mdl \
+    #         --n_clusters ${nclusters} \
+    #         --percent "-1" \
+    #         "scp:${km_dir}/train.scp" || exit 1;
+
+    _nj=$((nj<portion_nutt?nj:portion_nutt))
+    key_file="${km_dir}"/train.scp
+    split_scps=""
+    for n in $(seq ${_nj}); do
+        split_scps+=" ${_logdir}/train.${n}.scp"
+    done
+    # shellcheck disable=SC2086
+    utils/split_scp.pl "${key_file}" ${split_scps}
+
+    for iter in $(seq 1 $km_max_iter); do
+        echo "Kmeans Iteration ${iter}"
+        _opts=
+        if [ ${iter} -eq 1 ]; then
+            # initialize the kmeans model and dump it to a checkpoint
+            ${python} pyscripts/kmeans/kmeans_update_stats.py \
+                --n_clusters ${nclusters} \
+                --initialize_ckpt true \
+                --kmeans_init_ckpt "${km_dir}/km_${nclusters}.mdl" \
+                "scp:${_logdir}/train.1.scp" \
+                "${_logdir}/kmeans.1/label.txt" \
+                "${_logdir}/kmeans.1/stats.npy"
+        fi
+
+        # reassign labels and collect new stats
+        ${train_cmd} JOB=1:"${_nj}" ${_logdir}/kmeans.JOB.log \
+            ${python} pyscripts/kmeans/kmeans_update_stats.py \
+                --n_clusters ${nclusters} \
+                --kmeans_init_ckpt "${km_dir}/km_${nclusters}.mdl" \
+                --batch_frames 20000 \
+                --dump_label false \
+                "scp:${_logdir}/train.JOB.scp" \
+                "${_logdir}/kmeans.JOB/label.txt" \
+                "${_logdir}/kmeans.JOB/stats.npy" || exit 1;
+
+        # Summarize stats and update model
+        input_files=
+        for n in $(seq ${_nj}); do
+            input_files+="${_logdir}/kmeans.${n}/stats.npy "
+        done
+        ret=$(
+            ${python} pyscripts/kmeans/kmeans_update_model.py \
+                --kmeans_init_ckpt "${km_dir}/km_${nclusters}.mdl" \
+                ${input_files}
+        )
+
+        if [ ${ret} -eq 1 ]; then
+            log "early stop criterion satisfied."
+            break
+        fi
+
+    done
 
 fi
 

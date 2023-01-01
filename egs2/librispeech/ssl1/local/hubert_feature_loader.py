@@ -93,8 +93,7 @@ class HubertFeatureReader(BaseFeatureReader):
         else:
             raise TypeError(f"Unexpected data type of argument 1: {type(data)}.")
         with torch.no_grad():
-            x = torch.from_numpy(x).float().to(self.device)
-            x = x.view(1, -1)
+            x = torch.from_numpy(x).float().to(self.device).unsqueeze(0)
 
             feat = []
             for start in range(0, x.size(1), self.max_chunk):

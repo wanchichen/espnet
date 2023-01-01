@@ -57,9 +57,9 @@ fi
 
 if [ ${stage} -le 3 ] && [ ${stop_stage} -ge 3 ]; then
     log "stage 3: combine all training and development sets"
-    utils/combine_data.sh --extra_files utt2num_frames \
+    utils/combine_data.sh \
         data/${train_set} data/train_clean_100 data/train_clean_360 data/train_other_500
-    utils/combine_data.sh --extra_files utt2num_frames \
+    utils/combine_data.sh \
         data/${train_dev} data/dev_clean data/dev_other
 fi
 

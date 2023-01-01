@@ -14,11 +14,14 @@ import sys
 
 import joblib
 import numpy as np
+import pickle
 import torch
 
-from espnet2.utils.types import str2bool
+sys.path.append("./pyscripts/kmeans")
+from kmeans_model import KMeansModel
 from espnet.utils.cli_readers import file_reader_helper
 from espnet.utils.cli_writers import file_writer_helper
+from espnet2.utils.types import str2bool
 
 logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
@@ -62,8 +65,11 @@ def get_parser():
 
 class ApplyKmeans(object):
     def __init__(self, km_path, use_gpu):
-        self.km_model = joblib.load(km_path)
-        self.C_np = self.km_model.cluster_centers_.transpose()
+        # self.km_model = joblib.load(km_path)
+        # self.C_np = self.km_model.cluster_centers_.transpose()
+        with open(km_path, "rb") as f:
+            self.km_model = pickle.load(f)
+        self.C_np = self.km_model.centroids.transpose()
         self.Cnorm_np = (self.C_np**2).sum(0, keepdims=True)
 
         self.C = torch.from_numpy(self.C_np)

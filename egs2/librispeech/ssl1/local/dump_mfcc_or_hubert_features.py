@@ -137,6 +137,6 @@ if __name__ == "__main__":
     parser = get_parser()
     args = parser.parse_args()
 
-    logging.info(str(args))
+    logger.info(str(args))
 
     main(args)

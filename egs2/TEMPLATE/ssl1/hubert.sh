@@ -43,6 +43,7 @@ nj=32                # The number of parallel jobs.
 dumpdir=dump         # Directory to dump features.
 expdir=exp           # Directory to save experiments.
 python=python3       # Specify python to execute espnet commands.
+gpu_kmeans=false     # Whether to use gpu in kmeans process, including feature dumping and label dumping.
 
 # Data preparation related
 local_data_opts= # The options given to local/data.sh.
@@ -138,6 +139,9 @@ Options:
                        # e.g., --hubert_args "--max_epoch 10"
                        # Note that it will overwrite args in pt config.
     --gpu_dump_feature # Whether to use gpu for kmeans feature dumping (default="${gpu_dump_feature}").
+
+    # Alignment
+    --alignment_phoneme_dir # Phoneme alignment directory with tsv file (utt_id, phoneme_alignment)
 
     # Alignment
     --alignment_phoneme_dir # Phoneme alignment directory with tsv file (utt_id, phoneme_alignment)

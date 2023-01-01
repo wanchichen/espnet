@@ -86,7 +86,6 @@ def get_km_model(
 
 
 def load_feature_shard(rspecifier, in_filetype, percent):
-
     feats = []
     for utt, feat in file_reader_helper(rspecifier, in_filetype):
         feats.append(feat)
@@ -124,19 +123,19 @@ def load_feature(rspecifiers, in_filetype, percent):
 
 
 def learn_kmeans(
-    rspecifier,
-    in_filetype,
-    km_path,
-    n_clusters,
-    seed,
-    percent,
-    init,
-    max_iter,
-    batch_size,
-    tol,
-    n_init,
-    reassignment_ratio,
-    max_no_improvement,
+    rspecifier: str,
+    in_filetype: str,
+    km_path: str,
+    n_clusters: int,
+    seed: int,
+    percent: float,
+    init: str,
+    max_iter: int,
+    batch_size: int,
+    tol: float,
+    n_init: int,
+    reassignment_ratio: float,
+    max_no_improvement: int,
 ):
     np.random.seed(seed)
     feat = load_feature(rspecifier, in_filetype, percent)
