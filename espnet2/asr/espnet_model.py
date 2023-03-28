@@ -8,6 +8,7 @@ from typeguard import check_argument_types
 
 from espnet2.asr.ctc import CTC
 from espnet2.asr.decoder.abs_decoder import AbsDecoder
+from espnet2.asr.decoder.linear_decoder import LinearDecoder
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.postencoder.abs_postencoder import AbsPostEncoder
@@ -47,7 +48,7 @@ class ESPnetASRModel(AbsESPnetModel):
         preencoder: Optional[AbsPreEncoder],
         encoder: AbsEncoder,
         postencoder: Optional[AbsPostEncoder],
-        decoder: Optional[AbsDecoder],
+        decoder: AbsDecoder,
         ctc: CTC,
         joint_network: Optional[torch.nn.Module],
         aux_ctc: dict = None,
@@ -60,40 +61,23 @@ class ESPnetASRModel(AbsESPnetModel):
         report_wer: bool = True,
         sym_space: str = "<space>",
         sym_blank: str = "<blank>",
-        transducer_multi_blank_durations: List = [],
-        transducer_multi_blank_sigma: float = 0.05,
-        # In a regular ESPnet recipe, <sos> and <eos> are both "<sos/eos>"
-        # Pretrained HF Tokenizer needs custom sym_sos and sym_eos
-        sym_sos: str = "<sos/eos>",
-        sym_eos: str = "<sos/eos>",
         extract_feats_in_collect_stats: bool = True,
-        lang_token_id: int = -1,
     ):
         assert check_argument_types()
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
         assert 0.0 <= interctc_weight < 1.0, interctc_weight
 
         super().__init__()
-        # NOTE (Shih-Lun): else case is for OpenAI Whisper ASR model,
-        #                  which doesn't use <blank> token
-        if sym_blank in token_list:
-            self.blank_id = token_list.index(sym_blank)
-        else:
-            self.blank_id = 0
-        if sym_sos in token_list:
-            self.sos = token_list.index(sym_sos)
-        else:
-            self.sos = vocab_size - 1
-        if sym_eos in token_list:
-            self.eos = token_list.index(sym_eos)
-        else:
-            self.eos = vocab_size - 1
+        # note that eos is the same as sos (equivalent ID)
+        self.blank_id = 0
+        self.sos = vocab_size - 1
+        self.eos = vocab_size - 1
         self.vocab_size = vocab_size
         self.ignore_id = ignore_id
         self.ctc_weight = ctc_weight
         self.interctc_weight = interctc_weight
-        self.aux_ctc = aux_ctc
         self.token_list = token_list.copy()
+        self.aux_ctc = aux_ctc
 
         self.frontend = frontend
         self.specaug = specaug
@@ -101,6 +85,7 @@ class ESPnetASRModel(AbsESPnetModel):
         self.preencoder = preencoder
         self.postencoder = postencoder
         self.encoder = encoder
+        self.loss = torch.nn.CrossEntropyLoss()
 
         if not hasattr(self.encoder, "interctc_use_conditioning"):
             self.encoder.interctc_use_conditioning = False
@@ -113,93 +98,8 @@ class ESPnetASRModel(AbsESPnetModel):
 
         self.error_calculator = None
 
-        if self.use_transducer_decoder:
-            self.decoder = decoder
-            self.joint_network = joint_network
-
-            if not transducer_multi_blank_durations:
-                from warprnnt_pytorch import RNNTLoss
-
-                self.criterion_transducer = RNNTLoss(
-                    blank=self.blank_id,
-                    fastemit_lambda=0.0,
-                )
-            else:
-                from espnet2.asr.transducer.rnnt_multi_blank.rnnt_multi_blank import (
-                    MultiblankRNNTLossNumba,
-                )
-
-                self.criterion_transducer = MultiblankRNNTLossNumba(
-                    blank=self.blank_id,
-                    big_blank_durations=transducer_multi_blank_durations,
-                    sigma=transducer_multi_blank_sigma,
-                    reduction="mean",
-                    fastemit_lambda=0.0,
-                )
-                self.transducer_multi_blank_durations = transducer_multi_blank_durations
-
-            if report_cer or report_wer:
-                self.error_calculator_trans = ErrorCalculatorTransducer(
-                    decoder,
-                    joint_network,
-                    token_list,
-                    sym_space,
-                    sym_blank,
-                    report_cer=report_cer,
-                    report_wer=report_wer,
-                )
-            else:
-                self.error_calculator_trans = None
-
-                if self.ctc_weight != 0:
-                    self.error_calculator = ErrorCalculator(
-                        token_list, sym_space, sym_blank, report_cer, report_wer
-                    )
-        else:
-            # we set self.decoder = None in the CTC mode since
-            # self.decoder parameters were never used and PyTorch complained
-            # and threw an Exception in the multi-GPU experiment.
-            # thanks Jeff Farris for pointing out the issue.
-            if ctc_weight < 1.0:
-                assert (
-                    decoder is not None
-                ), "decoder should not be None when attention is used"
-            else:
-                decoder = None
-                logging.warning("Set decoder to none as ctc_weight==1.0")
-
-            self.decoder = decoder
-
-            self.criterion_att = LabelSmoothingLoss(
-                size=vocab_size,
-                padding_idx=ignore_id,
-                smoothing=lsm_weight,
-                normalize_length=length_normalized_loss,
-            )
-
-            if report_cer or report_wer:
-                self.error_calculator = ErrorCalculator(
-                    token_list, sym_space, sym_blank, report_cer, report_wer
-                )
-
-        if ctc_weight == 0.0:
-            self.ctc = None
-        else:
-            self.ctc = ctc
-
+        self.decoder = LinearDecoder(256, vocab_size)
         self.extract_feats_in_collect_stats = extract_feats_in_collect_stats
-
-        self.is_encoder_whisper = "Whisper" in type(self.encoder).__name__
-
-        if self.is_encoder_whisper:
-            assert (
-                self.frontend is None
-            ), "frontend should be None when using full Whisper model"
-
-        if lang_token_id != -1:
-            self.lang_token_id = torch.tensor([[lang_token_id]])
-        else:
-            self.lang_token_id = None
 
     def forward(
         self,
@@ -228,11 +128,6 @@ class ESPnetASRModel(AbsESPnetModel):
         ), (speech.shape, speech_lengths.shape, text.shape, text_lengths.shape)
         batch_size = speech.shape[0]
 
-        text[text == -1] = self.ignore_id
-
-        # for data-parallel
-        text = text[:, : text_lengths.max()]
-
         # 1. Encoder
         encoder_out, encoder_out_lens = self.encode(speech, speech_lengths)
         intermediate_outs = None
@@ -240,115 +135,15 @@ class ESPnetASRModel(AbsESPnetModel):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
 
-        loss_att, acc_att, cer_att, wer_att = None, None, None, None
-        loss_ctc, cer_ctc = None, None
-        loss_transducer, cer_transducer, wer_transducer = None, None, None
+        # 2. Decoder (baiscally a predction layer after encoder_out)
+        pred = self.decoder(encoder_out, encoder_out_lens)
+        #print(text.size())
+        loss = self.loss(pred, text[:,0])
+        acc = torch.sum((torch.argmax(pred, axis=1) == text)) / batch_size
+
         stats = dict()
-
-        # 1. CTC branch
-        if self.ctc_weight != 0.0:
-            loss_ctc, cer_ctc = self._calc_ctc_loss(
-                encoder_out, encoder_out_lens, text, text_lengths
-            )
-
-            # Collect CTC branch stats
-            stats["loss_ctc"] = loss_ctc.detach() if loss_ctc is not None else None
-            stats["cer_ctc"] = cer_ctc
-
-        # Intermediate CTC (optional)
-        loss_interctc = 0.0
-        if self.interctc_weight != 0.0 and intermediate_outs is not None:
-            for layer_idx, intermediate_out in intermediate_outs:
-                # we assume intermediate_out has the same length & padding
-                # as those of encoder_out
-
-                # use auxillary ctc data if specified
-                loss_ic = None
-                if self.aux_ctc is not None:
-                    idx_key = str(layer_idx)
-                    if idx_key in self.aux_ctc:
-                        aux_data_key = self.aux_ctc[idx_key]
-                        aux_data_tensor = kwargs.get(aux_data_key, None)
-                        aux_data_lengths = kwargs.get(aux_data_key + "_lengths", None)
-
-                        if aux_data_tensor is not None and aux_data_lengths is not None:
-                            loss_ic, cer_ic = self._calc_ctc_loss(
-                                intermediate_out,
-                                encoder_out_lens,
-                                aux_data_tensor,
-                                aux_data_lengths,
-                            )
-                        else:
-                            raise Exception(
-                                "Aux. CTC tasks were specified but no data was found"
-                            )
-                if loss_ic is None:
-                    loss_ic, cer_ic = self._calc_ctc_loss(
-                        intermediate_out, encoder_out_lens, text, text_lengths
-                    )
-                loss_interctc = loss_interctc + loss_ic
-
-                # Collect Intermedaite CTC stats
-                stats["loss_interctc_layer{}".format(layer_idx)] = (
-                    loss_ic.detach() if loss_ic is not None else None
-                )
-                stats["cer_interctc_layer{}".format(layer_idx)] = cer_ic
-
-            loss_interctc = loss_interctc / len(intermediate_outs)
-
-            # calculate whole encoder loss
-            loss_ctc = (
-                1 - self.interctc_weight
-            ) * loss_ctc + self.interctc_weight * loss_interctc
-
-        if self.use_transducer_decoder:
-            # 2a. Transducer decoder branch
-            (
-                loss_transducer,
-                cer_transducer,
-                wer_transducer,
-            ) = self._calc_transducer_loss(
-                encoder_out,
-                encoder_out_lens,
-                text,
-            )
-
-            if loss_ctc is not None:
-                loss = loss_transducer + (self.ctc_weight * loss_ctc)
-            else:
-                loss = loss_transducer
-
-            # Collect Transducer branch stats
-            stats["loss_transducer"] = (
-                loss_transducer.detach() if loss_transducer is not None else None
-            )
-            stats["cer_transducer"] = cer_transducer
-            stats["wer_transducer"] = wer_transducer
-
-        else:
-            # 2b. Attention decoder branch
-            if self.ctc_weight != 1.0:
-                loss_att, acc_att, cer_att, wer_att = self._calc_att_loss(
-                    encoder_out, encoder_out_lens, text, text_lengths
-                )
-
-            # 3. CTC-Att loss definition
-            if self.ctc_weight == 0.0:
-                loss = loss_att
-            elif self.ctc_weight == 1.0:
-                loss = loss_ctc
-            else:
-                loss = self.ctc_weight * loss_ctc + (1 - self.ctc_weight) * loss_att
-
-            # Collect Attn branch stats
-            stats["loss_att"] = loss_att.detach() if loss_att is not None else None
-            stats["acc"] = acc_att
-            stats["cer"] = cer_att
-            stats["wer"] = wer_att
-
-        # Collect total loss stats
         stats["loss"] = loss.detach()
-
+        stats["acc"] = acc.detach()
         # force_gatherable: to-device and to-tensor if scalar for DataParallel
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
@@ -361,7 +156,16 @@ class ESPnetASRModel(AbsESPnetModel):
         text_lengths: torch.Tensor,
         **kwargs,
     ) -> Dict[str, torch.Tensor]:
-        feats, feats_lengths = self._extract_feats(speech, speech_lengths)
+        if self.extract_feats_in_collect_stats:
+            feats, feats_lengths = self._extract_feats(speech, speech_lengths)
+        else:
+            # Generate dummy stats if extract_feats_in_collect_stats is False
+            logging.warning(
+                "Generating dummy stats for feats and feats_lengths, "
+                "because encoder_conf.extract_feats_in_collect_stats is "
+                f"{self.extract_feats_in_collect_stats}"
+            )
+            feats, feats_lengths = speech, speech_lengths
         return {"feats": feats, "feats_lengths": feats_lengths}
 
     def encode(
@@ -413,14 +217,10 @@ class ESPnetASRModel(AbsESPnetModel):
             encoder_out.size(),
             speech.size(0),
         )
-        if (
-            getattr(self.encoder, "selfattention_layer_type", None) != "lf_selfattn"
-            and not self.is_encoder_whisper
-        ):
-            assert encoder_out.size(-2) <= encoder_out_lens.max(), (
-                encoder_out.size(),
-                encoder_out_lens.max(),
-            )
+        assert encoder_out.size(1) <= encoder_out_lens.max(), (
+            encoder_out.size(),
+            encoder_out_lens.max(),
+        )
 
         if intermediate_outs is not None:
             return (encoder_out, intermediate_outs), encoder_out_lens
@@ -538,16 +338,6 @@ class ESPnetASRModel(AbsESPnetModel):
         ys_pad: torch.Tensor,
         ys_pad_lens: torch.Tensor,
     ):
-        if hasattr(self, "lang_token_id") and self.lang_token_id is not None:
-            ys_pad = torch.cat(
-                [
-                    self.lang_token_id.repeat(ys_pad.size(0), 1).to(ys_pad.device),
-                    ys_pad,
-                ],
-                dim=1,
-            )
-            ys_pad_lens += 1
-
         ys_in_pad, ys_out_pad = add_sos_eos(ys_pad, self.sos, self.eos, self.ignore_id)
         ys_in_lens = ys_pad_lens + 1
 
