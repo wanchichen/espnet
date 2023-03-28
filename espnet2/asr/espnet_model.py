@@ -139,14 +139,48 @@ class ESPnetASRModel(AbsESPnetModel):
         pred = self.decoder(encoder_out, encoder_out_lens)
         #print(text.size())
         loss = self.loss(pred, text[:,0])
-        acc = torch.sum((torch.argmax(pred, axis=1) == text)) / batch_size
+        #acc = torch.sum((torch.argmax(pred, axis=1) == text)) / batch_size
+        acc = th_accuracy(
+            pred.view(-1, self.vocab_size),
+            text,
+            ignore_label=self.ignore_id,
+        )
 
         stats = dict()
         stats["loss"] = loss.detach()
-        stats["acc"] = acc.detach()
+        stats["acc"] = acc
         # force_gatherable: to-device and to-tensor if scalar for DataParallel
         loss, stats, weight = force_gatherable((loss, stats, batch_size), loss.device)
         return loss, stats, weight
+
+    def forward_inf(
+        self,
+        speech: torch.Tensor,
+        speech_lengths: torch.Tensor
+    ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
+        """Frontend + Encoder + Decoder + Calc loss
+
+        Args:
+            speech: (Batch, Length, ...)
+            speech_lengths: (Batch, )
+            text: (Batch, Length)
+            text_lengths: (Batch,)
+            kwargs: "utt_id" is among the input.
+        """
+
+        batch_size = speech.shape[0]
+
+        # 1. Encoder
+        encoder_out, encoder_out_lens = self.encode(speech, speech_lengths)
+        intermediate_outs = None
+        if isinstance(encoder_out, tuple):
+            intermediate_outs = encoder_out[1]
+            encoder_out = encoder_out[0]
+
+        # 2. Decoder (baiscally a predction layer after encoder_out)
+        pred = self.decoder(encoder_out, encoder_out_lens)
+
+        return pred
 
     def collect_feats(
         self,
