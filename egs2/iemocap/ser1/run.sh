@@ -33,7 +33,7 @@ local_data_opts="--lowercase true --remove_punctuation true --remove_emo xxx_exc
 #   This option normalizes text irrelevant of "--lowercase" "--remove_punctuation" "--remove_tag" options
 
 ./asr.sh \
-    --lang combined \\
+    --lang combined \
     --ngpu 1 \
     --asr_stats_dir exp/asr_stats_combined_ssl \
     --use_lm false \
@@ -43,7 +43,7 @@ local_data_opts="--lowercase true --remove_punctuation true --remove_emo xxx_exc
     --feats_type raw\
     --max_wav_duration 30 \
     --inference_nj 64 \
-    --inference_asr_model valid.loss.ave.pth\
+    --inference_asr_model valid.acc.best.pth\
     --asr_config "${asr_config}" \
     --inference_config "${inference_config}" \
     --train_set "${train_set}" \
