@@ -62,6 +62,8 @@ class ESPnetASRModel(AbsESPnetModel):
         sym_space: str = "<space>",
         sym_blank: str = "<blank>",
         extract_feats_in_collect_stats: bool = True,
+        diagonal = False,
+        adapter = False
     ):
         assert check_argument_types()
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
@@ -98,6 +100,13 @@ class ESPnetASRModel(AbsESPnetModel):
 
         self.error_calculator = None
 
+        self.diagonal = diagonal
+        if diagonal:
+            self.mask = torch.eye(256, dtype=bool).cuda()
+
+        self.adapter = None
+        if adapter:
+            self.adapter = torch.nn.Linear(256,256)
         self.decoder = LinearDecoder(256, vocab_size)
         self.extract_feats_in_collect_stats = extract_feats_in_collect_stats
 
@@ -134,6 +143,11 @@ class ESPnetASRModel(AbsESPnetModel):
         if isinstance(encoder_out, tuple):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
+
+        if self.diagonal:
+            self.adapter.weight.data *= self.mask
+        if self.adapter:
+            encoder_out = self.adapter(encoder_out)
 
         # 2. Decoder (baiscally a predction layer after encoder_out)
         pred = self.decoder(encoder_out, encoder_out_lens)
@@ -176,6 +190,11 @@ class ESPnetASRModel(AbsESPnetModel):
         if isinstance(encoder_out, tuple):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
+
+        if self.diagonal:
+            self.adapter.weight.data *= self.mask
+        if self.adapter:
+            encoder_out = self.adapter(encoder_out)
 
         # 2. Decoder (baiscally a predction layer after encoder_out)
         pred = self.decoder(encoder_out, encoder_out_lens)
