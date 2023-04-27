@@ -323,6 +323,9 @@ class CommonPreprocessor(AbsPreprocessor):
     def _text_process(
         self, data: Dict[str, Union[str, np.ndarray]]
     ) -> Dict[str, np.ndarray]:
+        if 'clusters' in data:
+            raw_cluster =  [float(cluster) for cluster in data["clusters"].split()]
+            data["clusters"] = np.array(raw_cluster)
         if self.text_name in data and self.tokenizer is not None:
             text = data[self.text_name]
             if isinstance(text, np.ndarray):
@@ -489,6 +492,7 @@ class CommonPreprocessor_multi(CommonPreprocessor):
     def _text_process(
         self, data: Dict[str, Union[str, np.ndarray]]
     ) -> Dict[str, np.ndarray]:
+
         for text_n in self.text_name:
             if text_n in data and self.tokenizer is not None:
                 text = data[text_n]

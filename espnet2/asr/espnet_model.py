@@ -12,6 +12,7 @@ from espnet2.asr.decoder.linear_decoder import LinearDecoder
 from espnet2.asr.encoder.abs_encoder import AbsEncoder
 from espnet2.asr.frontend.abs_frontend import AbsFrontend
 from espnet2.asr.postencoder.abs_postencoder import AbsPostEncoder
+from espnet2.asr.postencoder.adapter_postencoder import AdapterPostEncoder
 from espnet2.asr.preencoder.abs_preencoder import AbsPreEncoder
 from espnet2.asr.specaug.abs_specaug import AbsSpecAug
 from espnet2.asr.transducer.error_calculator import ErrorCalculatorTransducer
@@ -48,7 +49,7 @@ class ESPnetASRModel(AbsESPnetModel):
         preencoder: Optional[AbsPreEncoder],
         encoder: AbsEncoder,
         postencoder: Optional[AbsPostEncoder],
-        decoder: AbsDecoder,
+        decoder: Optional[AbsDecoder],
         ctc: CTC,
         joint_network: Optional[torch.nn.Module],
         aux_ctc: dict = None,
@@ -63,7 +64,8 @@ class ESPnetASRModel(AbsESPnetModel):
         sym_blank: str = "<blank>",
         extract_feats_in_collect_stats: bool = True,
         diagonal = False,
-        adapter = False
+        adapter = False,
+        num_adapter: int = 2,
     ):
         assert check_argument_types()
         assert 0.0 <= ctc_weight <= 1.0, ctc_weight
@@ -102,12 +104,13 @@ class ESPnetASRModel(AbsESPnetModel):
 
         self.diagonal = diagonal
         if diagonal:
-            self.mask = torch.eye(256, dtype=bool).cuda()
+            self.mask = torch.eye(encoder._output_size, dtype=bool).cuda()
 
-        self.adapter = None
+        self.adapter = adapter
         if adapter:
-            self.adapter = torch.nn.Linear(256,256)
-        self.decoder = LinearDecoder(256, vocab_size)
+            #self.adapter = torch.nn.Linear(encoder._output_size,encoder._output_size)
+            self.postencoder = AdapterPostEncoder(encoder._output_size, encoder._output_size, num_adapter=num_adapter)
+        self.decoder = LinearDecoder(encoder._output_size, vocab_size)
         self.extract_feats_in_collect_stats = extract_feats_in_collect_stats
 
     def forward(
@@ -116,6 +119,7 @@ class ESPnetASRModel(AbsESPnetModel):
         speech_lengths: torch.Tensor,
         text: torch.Tensor,
         text_lengths: torch.Tensor,
+        clusters: torch.Tensor,
         **kwargs,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Decoder + Calc loss
@@ -144,10 +148,10 @@ class ESPnetASRModel(AbsESPnetModel):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
 
-        if self.diagonal:
-            self.adapter.weight.data *= self.mask
+        #if self.diagonal:
+            #self.adapter.weight.data *= self.mask
         if self.adapter:
-            encoder_out = self.adapter(encoder_out)
+            encoder_out, _ = self.postencoder(encoder_out, encoder_out_lens, clusters)
 
         # 2. Decoder (baiscally a predction layer after encoder_out)
         pred = self.decoder(encoder_out, encoder_out_lens)
@@ -170,7 +174,8 @@ class ESPnetASRModel(AbsESPnetModel):
     def forward_inf(
         self,
         speech: torch.Tensor,
-        speech_lengths: torch.Tensor
+        speech_lengths: torch.Tensor,
+        clusters: torch.Tensor,
     ) -> Tuple[torch.Tensor, Dict[str, torch.Tensor], torch.Tensor]:
         """Frontend + Encoder + Decoder + Calc loss
 
@@ -191,10 +196,10 @@ class ESPnetASRModel(AbsESPnetModel):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
 
-        if self.diagonal:
-            self.adapter.weight.data *= self.mask
+        #if self.diagonal:
+            #self.adapter.weight.data *= self.mask
         if self.adapter:
-            encoder_out = self.adapter(encoder_out)
+            encoder_out, _ = self.postencoder(encoder_out, encoder_out_lens, clusters)
 
         # 2. Decoder (baiscally a predction layer after encoder_out)
         pred = self.decoder(encoder_out, encoder_out_lens)
@@ -259,12 +264,6 @@ class ESPnetASRModel(AbsESPnetModel):
         if isinstance(encoder_out, tuple):
             intermediate_outs = encoder_out[1]
             encoder_out = encoder_out[0]
-
-        # Post-encoder, e.g. NLU
-        if self.postencoder is not None:
-            encoder_out, encoder_out_lens = self.postencoder(
-                encoder_out, encoder_out_lens
-            )
 
         assert encoder_out.size(0) == speech.size(0), (
             encoder_out.size(),

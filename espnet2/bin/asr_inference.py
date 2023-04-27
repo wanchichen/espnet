@@ -247,7 +247,7 @@ class Speech2Text:
 
     @torch.no_grad()
     def __call__(
-        self, speech: Union[torch.Tensor, np.ndarray]
+        self, speech: Union[torch.Tensor, np.ndarray], clusters=None
     ) -> List[
         Tuple[
             Optional[str],
@@ -274,7 +274,7 @@ class Speech2Text:
         speech = speech.unsqueeze(0).to(getattr(torch, self.dtype))
         # lengths: (1,)
         lengths = speech.new_full([1], dtype=torch.long, fill_value=speech.size(1))
-        batch = {"speech": speech, "speech_lengths": lengths}
+        batch = {"speech": speech, "speech_lengths": lengths, "clusters": clusters}
         logging.info("speech length: " + str(speech.size(1)))
 
         # a. To device

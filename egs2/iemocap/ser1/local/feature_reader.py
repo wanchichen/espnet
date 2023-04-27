@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
-# Taken from ESPnet's HuBERT SSL feature reader. Which uses the following code:
-#
+# Taken from ESPnet's HuBERT SSL feature reader, by Xuankai Chang and William Chen. (Pending PR)
+# 
 # The feature_loader.py uses code from Fairseq:
 #     https://github.com/pytorch/fairseq/blob/master/examples/hubert/simple_kmeans/dump_mfcc_feature.py
 #
@@ -67,4 +67,42 @@ class MfccFeatureReader(BaseFeatureReader):
             concat = (
                 torch.cat([mfcc, delta, ddelta], dim=0).transpose(0, 1).contiguous()
             )
-            return concat
+            return mfcc.transpose(0, 1).contiguous()
+
+class ESPnetModelFeatureReader(BaseFeatureReader):
+    def __init__(self, asr_model_path, layer=None, sample_rate=16000, max_chunk=1600000):
+        self.sample_rate = sample_rate
+
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+        from espnet2.tasks.asr import ASRTask
+
+        asr_model, asr_train_args = ASRTask.build_model_from_file(
+            None,
+            asr_model_path,
+            device,
+        )
+        self.device = next(asr_model.parameters()).device
+        self.model = asr_model.eval()
+        self.layer = layer
+
+        self.max_chunk = max_chunk
+        logger.info(f" max_chunk = {self.max_chunk}")
+
+    def get_feats(self, data, ref_len=None):
+        if isinstance(data, str):
+            x = self.load_audio(data, ref_len=ref_len)
+        elif isinstance(data, np.ndarray):
+            x = data
+        with torch.inference_mode():
+            x = torch.from_numpy(x).float().to(self.device)
+            x = x.view(1, -1) # torch.Size([1, 32640])
+
+            lens = torch.tensor([x.shape[1]], dtype=torch.long)
+            feat, _ = self.model.encode(x, lens)
+
+            # feat is (feat, inter_feat) for models using interctc
+            if type(feat) is tuple:
+                feat = feat[0]
+
+            feat = feat[-1]  # (time, feat_dim) torch.Size([49, 512])
+        return feat.cpu()
