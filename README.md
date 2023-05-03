@@ -1,3 +1,93 @@
+# Team 31 11-785 Project: Models Optimized for Domain Adaptation
+
+William Chen, Ju-Chun Huang, Meera Ray, Bohan Zhang
+
+This is the code for our project on cluster-based domain adaptation for speech emotion recognition.
+Our code is built on top of the ESPnet code base to eliminate the need for additional boilerplate.
+
+## Installation
+For complete installation instructions, we refer to the official [ESPnet documentation](https://espnet.github.io/espnet/installation.html).
+
+The installation procedure we used can be done with the following commands:
+
+```
+git clone https://github.com/wanchichen/espnet.git
+cd espnet
+git checkout da_project
+cd tools
+./setup_anaconda.sh miniconda espnet 3.8
+make TH_VERSION=1.10.1 CUDA_VERSION=10.2
+```
+
+## Code structure
+
+ESPnet is largely organized into reproducible recipes: end to end pipelines that span from data preparation to inference. To access our SER recipe for IEMOCAP, run the following commands.
+```
+<in root>
+cd espnet
+cd egs2
+cd iemocap
+cd ser1
+```
+
+The recipes can then be run with the following:
+```
+. ./path.sh
+. ./run.sh
+```
+We note that the user may need to configure ESPnet to fit their environment. Details can be found [here](https://espnet.github.io/espnet/tutorial.html) and [here](https://espnet.github.io/espnet/parallelization.html).
+
+Code in ESPnet is fairly abstracted. Our actual code for model training mostly lives in the following files:
+```
+espnet
+  - espnet2
+    - asr
+      - decoder/linear_decoder.py (classification output layer)
+      - postencoder/adapter_postencoder.py (adapter class)
+      - espnet_model.py (model init and forward)
+    - train
+      - preprocessor.py (add clusters to data loading)
+```
+The full list of files may be found in the commit history.
+
+## Running the Code
+
+```
+<in root>
+cd espnet
+cd egs2
+cd iemocap
+cd ser1
+. ./path.sh
+```
+
+1. You will need to download the datasets. 
+
+We use a copy of EMO-DB from [Kaggle](https://www.kaggle.com/datasets/piyushagni5/berlin-database-of-emotional-speech-emodb).
+
+Access to IEMOCAP can be requested from [here](https://sail.usc.edu/iemocap/iemocap_release.htm).
+
+2. Update `db.sh` to have `IEMOCAP=` point to the path of the downloaded data
+
+3. Add the flag `--stop_stage 5` to `run.sh`
+
+4. `. ./run.sh`
+
+5. Modify `local/format_german.py` to point to the downloaded EMO-DB wavs, and run it.
+
+6. Change the flags in `run.sh` to the following:
+```
+train_set="train_german"
+valid_set="valid_german"
+test_sets="test_german"
+```
+
+7. add the flag `--stage 2` and `. ./run.sh` again
+
+8. `utils/combine_data_dir.sh dump/raw/train_en_de dump/raw/train dump/raw/train_german`
+
+9. Now, use the new dataset in `run.sh` and run from stage 5 onwards.
+
 <div align="left"><img src="doc/image/espnet_logo1.png" width="550"/></div>
 
 # ESPnet: end-to-end speech processing toolkit
