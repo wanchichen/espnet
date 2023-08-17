@@ -3,8 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>espnet.nets.pytorch_backend.nets_utils &mdash; ESPnet 202301 documentation</title><link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
+  <title>espnet.nets.pytorch_backend.nets_utils &mdash; ESPnet 202308 documentation</title><link rel="stylesheet" href="../../../../_static/css/theme.css" type="text/css" />
     <link rel="stylesheet" href="../../../../_static/pygments.css" type="text/css" />
+      <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
+      <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
+      <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
+      <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
       <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
       <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
       <link rel="stylesheet" href="../../../../_static/nbsphinx-code-cells.css" type="text/css" />
@@ -50,7 +54,7 @@
             ESPnet
           </a>
               <div class="version">
-                202301
+                202308
               </div>
 <div role="search">
   <form id="rtd-search-form" class="wy-form" action="../../../../search.html" method="get">
@@ -63,21 +67,32 @@
               <p><span class="caption-text">Tutorial:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../installation.html">Installation</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../tutorial.html">Usage</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../parallelization.html">Using Job scheduling system</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../tutorial.html">Common usages</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../parallelization.html">Using job scheduling system</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../faq.html">FAQ</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../docker.html">Docker</a></li>
+</ul>
+<p><span class="caption-text">ESPnet1:</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../espnet1_tutorial.html">Usage</a></li>
 </ul>
 <p><span class="caption-text">ESPnet2:</span></p>
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="../../../../espnet2_tutorial.html">ESPnet2</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../espnet2_tutorial.html#instruction-for-run-sh">Instruction for run.sh</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../espnet2_training_option.html">Change the configuration for training</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../espnet2_format_wav_scp.html">Converting audio file formats using format_wav_scp.py</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../espnet2_task.html">Task class and data input system for training</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../espnet2_distributed.html">Distributed training</a></li>
 </ul>
 <p><span class="caption-text">Notebook:</span></p>
 <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../../../notebook/DataPreparation_CMU_11492_692_Spring2023(Assignment0).html">CMU 11492/11692 Spring 2023: Data preparation</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../notebook/DataPreparation_CMU_11492_692_Spring2023(Assignment0).html#Data-preparation-in-ESPnet">Data preparation in ESPnet</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../notebook/SpeechEnhancement_CMU_11492_692_Spring2023(Assignment7).html">CMU 11492/11692 Spring 2023: Speech Enhancement</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../notebook/SpeechEnhancement_CMU_11492_692_Spring2023(Assignment7).html#Contents">Contents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../notebook/SpokenLanguageUnderstanding_CMU_11492_692_Spring2023(Assignment6).html">CMU 11492/11692 Spring 2023: Spoken Language Understanding</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../notebook/TextToSpeech_CMU_11492_692_Spring2023(Assignment8).html">CMU 11492/11692 Spring 2023: Text to Speech</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../notebook/asr_cli.html">Speech Recognition (Recipe)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../notebook/asr_library.html">Speech Recognition (Library)</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../notebook/espnet2_2pass_slu_demo.html">ESPNET 2 pass SLU Demonstration</a></li>
@@ -117,47 +132,49 @@
 </ul>
 <p><span class="caption-text">Package Reference:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.st.html">espnet.st package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.scheduler.html">espnet.scheduler package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.nets.html">espnet.nets package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.lm.html">espnet.lm package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.optimizer.html">espnet.optimizer package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.bin.html">espnet.bin package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.mt.html">espnet.mt package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.utils.html">espnet.utils package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.tts.html">espnet.tts package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.scheduler.html">espnet.scheduler package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.distributed.html">espnet.distributed package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.asr.html">espnet.asr package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.tts.html">espnet.tts package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.optimizer.html">espnet.optimizer package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.lm.html">espnet.lm package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.vc.html">espnet.vc package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.utils.html">espnet.utils package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.nets.html">espnet.nets package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.asr.html">espnet.asr package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.st.html">espnet.st package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet.transform.html">espnet.transform package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.st.html">espnet2.st package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.hubert.html">espnet2.hubert package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.slu.html">espnet2.slu package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.gan_svs.html">espnet2.gan_svs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.lm.html">espnet2.lm package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.train.html">espnet2.train package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.enh.html">espnet2.enh package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.schedulers.html">espnet2.schedulers package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.text.html">espnet2.text package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.main_funcs.html">espnet2.main_funcs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.asr_transducer.html">espnet2.asr_transducer package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.bin.html">espnet2.bin package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.tasks.html">espnet2.tasks package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.mt.html">espnet2.mt package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.utils.html">espnet2.utils package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.tts.html">espnet2.tts package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.gan_tts.html">espnet2.gan_tts package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.layers.html">espnet2.layers package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.torch_utils.html">espnet2.torch_utils package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.fileio.html">espnet2.fileio package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.optimizers.html">espnet2.optimizers package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.uasr.html">espnet2.uasr package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.svs.html">espnet2.svs package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.asr.html">espnet2.asr package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.diar.html">espnet2.diar package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.samplers.html">espnet2.samplers package</a></li>
-<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.iterators.html">espnet2.iterators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.asvspoof.html">espnet2.asvspoof package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.text.html">espnet2.text package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.enh.html">espnet2.enh package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.gan_tts.html">espnet2.gan_tts package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.mt.html">espnet2.mt package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.asr_transducer.html">espnet2.asr_transducer package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.train.html">espnet2.train package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.schedulers.html">espnet2.schedulers package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.tts.html">espnet2.tts package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.lm.html">espnet2.lm package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.svs.html">espnet2.svs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.diar.html">espnet2.diar package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.fileio.html">espnet2.fileio package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.tasks.html">espnet2.tasks package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.uasr.html">espnet2.uasr package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.utils.html">espnet2.utils package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.spk.html">espnet2.spk package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.torch_utils.html">espnet2.torch_utils package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.gan_svs.html">espnet2.gan_svs package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.optimizers.html">espnet2.optimizers package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.asr.html">espnet2.asr package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.layers.html">espnet2.layers package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.hubert.html">espnet2.hubert package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.st.html">espnet2.st package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.main_funcs.html">espnet2.main_funcs package</a></li>
 <li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.fst.html">espnet2.fst package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.iterators.html">espnet2.iterators package</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../../../../_gen/espnet2.slu.html">espnet2.slu package</a></li>
 </ul>
 <p><span class="caption-text">Tool Reference:</span></p>
 <ul>
@@ -344,6 +361,27 @@
     <span class="k">if</span> <span class="n">length_dim</span> <span class="o">==</span> <span class="mi">0</span><span class="p">:</span>
         <span class="k">raise</span> <span class="ne">ValueError</span><span class="p">(</span><span class="s2">&quot;length_dim cannot be 0: </span><span class="si">{}</span><span class="s2">&quot;</span><span class="o">.</span><span class="n">format</span><span class="p">(</span><span class="n">length_dim</span><span class="p">))</span>
 
+    <span class="c1"># If the input dimension is 2 or 3,</span>
+    <span class="c1"># then we use ESPnet-ONNX based implementation for tracable modeling.</span>
+    <span class="c1"># otherwise we use the traditional implementation for research use.</span>
+    <span class="k">if</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
+        <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+            <span class="s2">&quot;Using make_pad_mask with a list of lengths is not tracable. &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;If you try to trace this function with type(lengths) == list, &quot;</span>
+            <span class="o">+</span> <span class="s2">&quot;please change the type of lengths to torch.LongTensor.&quot;</span>
+        <span class="p">)</span>
+
+    <span class="k">if</span> <span class="p">(</span>
+        <span class="p">(</span><span class="n">xs</span> <span class="ow">is</span> <span class="kc">None</span> <span class="ow">or</span> <span class="n">xs</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="mi">3</span><span class="p">))</span>
+        <span class="ow">and</span> <span class="n">length_dim</span> <span class="o">&lt;=</span> <span class="mi">2</span>
+        <span class="ow">and</span> <span class="p">(</span><span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="nb">list</span><span class="p">)</span> <span class="ow">and</span> <span class="n">lengths</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">==</span> <span class="mi">1</span><span class="p">)</span>
+    <span class="p">):</span>
+        <span class="k">return</span> <span class="n">_make_pad_mask_traceable</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">length_dim</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">_make_pad_mask</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">length_dim</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">)</span></div>
+
+
+<span class="k">def</span> <span class="nf">_make_pad_mask</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="n">xs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">length_dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
     <span class="k">if</span> <span class="ow">not</span> <span class="nb">isinstance</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="nb">list</span><span class="p">):</span>
         <span class="n">lengths</span> <span class="o">=</span> <span class="n">lengths</span><span class="o">.</span><span class="n">long</span><span class="p">()</span><span class="o">.</span><span class="n">tolist</span><span class="p">()</span>
 
@@ -354,8 +392,10 @@
         <span class="k">else</span><span class="p">:</span>
             <span class="n">maxlen</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="n">length_dim</span><span class="p">)</span>
     <span class="k">else</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">xs</span> <span class="ow">is</span> <span class="kc">None</span>
-        <span class="k">assert</span> <span class="n">maxlen</span> <span class="o">&gt;=</span> <span class="nb">int</span><span class="p">(</span><span class="nb">max</span><span class="p">(</span><span class="n">lengths</span><span class="p">))</span>
+        <span class="k">assert</span> <span class="n">xs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">,</span> <span class="s2">&quot;When maxlen is specified, xs must not be specified.&quot;</span>
+        <span class="k">assert</span> <span class="n">maxlen</span> <span class="o">&gt;=</span> <span class="nb">int</span><span class="p">(</span>
+            <span class="nb">max</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span>
+        <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;maxlen </span><span class="si">{</span><span class="n">maxlen</span><span class="si">}</span><span class="s2"> must be &gt;= max(lengths) </span><span class="si">{</span><span class="nb">max</span><span class="p">(</span><span class="n">lengths</span><span class="p">)</span><span class="si">}</span><span class="s2">&quot;</span>
 
     <span class="n">seq_range</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">int64</span><span class="p">)</span>
     <span class="n">seq_range_expand</span> <span class="o">=</span> <span class="n">seq_range</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="n">bs</span><span class="p">,</span> <span class="n">maxlen</span><span class="p">)</span>
@@ -363,7 +403,9 @@
     <span class="n">mask</span> <span class="o">=</span> <span class="n">seq_range_expand</span> <span class="o">&gt;=</span> <span class="n">seq_length_expand</span>
 
     <span class="k">if</span> <span class="n">xs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
-        <span class="k">assert</span> <span class="n">xs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="n">bs</span><span class="p">,</span> <span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">bs</span><span class="p">)</span>
+        <span class="k">assert</span> <span class="p">(</span>
+            <span class="n">xs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span> <span class="o">==</span> <span class="n">bs</span>
+        <span class="p">),</span> <span class="sa">f</span><span class="s2">&quot;The size of x.size(0) </span><span class="si">{</span><span class="n">xs</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">)</span><span class="si">}</span><span class="s2"> must match the batch size </span><span class="si">{</span><span class="n">bs</span><span class="si">}</span><span class="s2">&quot;</span>
 
         <span class="k">if</span> <span class="n">length_dim</span> <span class="o">&lt;</span> <span class="mi">0</span><span class="p">:</span>
             <span class="n">length_dim</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">dim</span><span class="p">()</span> <span class="o">+</span> <span class="n">length_dim</span>
@@ -372,7 +414,62 @@
             <span class="nb">slice</span><span class="p">(</span><span class="kc">None</span><span class="p">)</span> <span class="k">if</span> <span class="n">i</span> <span class="ow">in</span> <span class="p">(</span><span class="mi">0</span><span class="p">,</span> <span class="n">length_dim</span><span class="p">)</span> <span class="k">else</span> <span class="kc">None</span> <span class="k">for</span> <span class="n">i</span> <span class="ow">in</span> <span class="nb">range</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">dim</span><span class="p">())</span>
         <span class="p">)</span>
         <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="n">ind</span><span class="p">]</span><span class="o">.</span><span class="n">expand_as</span><span class="p">(</span><span class="n">xs</span><span class="p">)</span><span class="o">.</span><span class="n">to</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
-    <span class="k">return</span> <span class="n">mask</span></div>
+    <span class="k">return</span> <span class="n">mask</span>
+
+
+<span class="k">def</span> <span class="nf">_make_pad_mask_traceable</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="n">xs</span><span class="p">,</span> <span class="n">length_dim</span><span class="p">,</span> <span class="n">maxlen</span><span class="o">=</span><span class="kc">None</span><span class="p">):</span>
+<span class="w">    </span><span class="sd">&quot;&quot;&quot;</span>
+<span class="sd">    Make mask tensor containing indices of padded part.</span>
+<span class="sd">    This is a simplified implementation of make_pad_mask without the xs input</span>
+<span class="sd">    that supports JIT tracing for applications like exporting models to ONNX.</span>
+<span class="sd">    Dimension length of xs should be 2 or 3</span>
+<span class="sd">    This function will create torch.ones(maxlen, maxlen).triu(diagonal=1) and</span>
+<span class="sd">    select rows to create mask tensor.</span>
+<span class="sd">    &quot;&quot;&quot;</span>
+
+    <span class="k">if</span> <span class="n">xs</span> <span class="ow">is</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">lengths</span><span class="o">.</span><span class="n">device</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">device</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">device</span>
+
+    <span class="k">if</span> <span class="n">xs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span><span class="p">:</span>
+        <span class="k">if</span> <span class="n">length_dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+            <span class="n">lengths</span> <span class="o">=</span> <span class="n">lengths</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">xs</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+        <span class="k">else</span><span class="p">:</span>
+            <span class="c1"># Then length_dim is 2 or -1.</span>
+            <span class="k">if</span> <span class="n">length_dim</span> <span class="ow">not</span> <span class="ow">in</span> <span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">):</span>
+                <span class="n">logging</span><span class="o">.</span><span class="n">warn</span><span class="p">(</span>
+                    <span class="sa">f</span><span class="s2">&quot;Invalid length_dim </span><span class="si">{</span><span class="n">length_dim</span><span class="si">}</span><span class="s2">.&quot;</span>
+                    <span class="o">+</span> <span class="s2">&quot;We set it to -1, which is the default value.&quot;</span>
+                <span class="p">)</span>
+                <span class="n">length_dim</span> <span class="o">=</span> <span class="o">-</span><span class="mi">1</span>
+            <span class="n">lengths</span> <span class="o">=</span> <span class="n">lengths</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">*</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">[:</span><span class="mi">2</span><span class="p">])</span>
+
+    <span class="k">if</span> <span class="n">maxlen</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="k">assert</span> <span class="n">xs</span> <span class="ow">is</span> <span class="kc">None</span>
+        <span class="k">assert</span> <span class="n">maxlen</span> <span class="o">&gt;=</span> <span class="n">lengths</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+    <span class="k">elif</span> <span class="n">xs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span><span class="p">:</span>
+        <span class="n">maxlen</span> <span class="o">=</span> <span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">[</span><span class="n">length_dim</span><span class="p">]</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="n">maxlen</span> <span class="o">=</span> <span class="n">lengths</span><span class="o">.</span><span class="n">max</span><span class="p">()</span>
+
+    <span class="c1"># clip max(length) to maxlen</span>
+    <span class="n">lengths</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">clamp</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="nb">max</span><span class="o">=</span><span class="n">maxlen</span><span class="p">)</span><span class="o">.</span><span class="n">type</span><span class="p">(</span><span class="n">torch</span><span class="o">.</span><span class="n">long</span><span class="p">)</span>
+
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">ones</span><span class="p">(</span><span class="n">maxlen</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">maxlen</span> <span class="o">+</span> <span class="mi">1</span><span class="p">,</span> <span class="n">dtype</span><span class="o">=</span><span class="n">torch</span><span class="o">.</span><span class="n">bool</span><span class="p">,</span> <span class="n">device</span><span class="o">=</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">triu_onnx</span><span class="p">(</span><span class="n">mask</span><span class="p">)[</span><span class="mi">1</span><span class="p">:,</span> <span class="p">:</span><span class="o">-</span><span class="mi">1</span><span class="p">]</span>  <span class="c1"># onnx cannot handle diagonal argument.</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">mask</span><span class="p">[</span><span class="n">lengths</span> <span class="o">-</span> <span class="mi">1</span><span class="p">][</span><span class="o">...</span><span class="p">,</span> <span class="p">:</span><span class="n">maxlen</span><span class="p">]</span>
+
+    <span class="k">if</span> <span class="n">xs</span> <span class="ow">is</span> <span class="ow">not</span> <span class="kc">None</span> <span class="ow">and</span> <span class="nb">len</span><span class="p">(</span><span class="n">xs</span><span class="o">.</span><span class="n">shape</span><span class="p">)</span> <span class="o">==</span> <span class="mi">3</span> <span class="ow">and</span> <span class="n">length_dim</span> <span class="o">==</span> <span class="mi">1</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mask</span><span class="o">.</span><span class="n">transpose</span><span class="p">(</span><span class="mi">1</span><span class="p">,</span> <span class="mi">2</span><span class="p">)</span>
+    <span class="k">else</span><span class="p">:</span>
+        <span class="k">return</span> <span class="n">mask</span>
+
+
+<div class="viewcode-block" id="triu_onnx"><a class="viewcode-back" href="../../../../_gen/espnet.nets.html#espnet.nets.pytorch_backend.nets_utils.triu_onnx">[docs]</a><span class="k">def</span> <span class="nf">triu_onnx</span><span class="p">(</span><span class="n">x</span><span class="p">):</span>
+    <span class="n">arange</span> <span class="o">=</span> <span class="n">torch</span><span class="o">.</span><span class="n">arange</span><span class="p">(</span><span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">),</span> <span class="n">device</span><span class="o">=</span><span class="n">x</span><span class="o">.</span><span class="n">device</span><span class="p">)</span>
+    <span class="n">mask</span> <span class="o">=</span> <span class="n">arange</span><span class="o">.</span><span class="n">unsqueeze</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">)</span><span class="o">.</span><span class="n">expand</span><span class="p">(</span><span class="o">-</span><span class="mi">1</span><span class="p">,</span> <span class="n">x</span><span class="o">.</span><span class="n">size</span><span class="p">(</span><span class="mi">0</span><span class="p">))</span> <span class="o">&lt;=</span> <span class="n">arange</span>
+    <span class="k">return</span> <span class="n">x</span> <span class="o">*</span> <span class="n">mask</span></div>
 
 
 <div class="viewcode-block" id="make_non_pad_mask"><a class="viewcode-back" href="../../../../_gen/espnet.nets.html#espnet.nets.pytorch_backend.nets_utils.make_non_pad_mask">[docs]</a><span class="k">def</span> <span class="nf">make_non_pad_mask</span><span class="p">(</span><span class="n">lengths</span><span class="p">,</span> <span class="n">xs</span><span class="o">=</span><span class="kc">None</span><span class="p">,</span> <span class="n">length_dim</span><span class="o">=-</span><span class="mi">1</span><span class="p">):</span>
