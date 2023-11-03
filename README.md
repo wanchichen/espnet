@@ -1,15 +1,72 @@
+# MNLP HW2: Multilingual ASR
+
+William Chen (wc4) and Tianyue Ou (tianyueo)
+
+## Installation
+For complete installation instructions, we refer to the official [ESPnet documentation](https://espnet.github.io/espnet/installation.html).
+
+The installation procedure we used can be done with the following commands:
+
+```
+git clone https://github.com/wanchichen/espnet.git
+cd espnet
+git checkout que_spa
+cd tools
+./setup_anaconda.sh miniconda espnet 3.8
+make TH_VERSION=1.13.1 CUDA_VERSION=10.2
+```
+
+## Structure
+
+ESPnet is largely organized into reproducible recipes: end to end pipelines that span from data preparation to inference. To access our Quechua/Guarani recipe, run the following commands.
+```
+<in root>
+cd espnet
+cd egs2
+cd iwslt23_low_resource
+cd asr1
+```
+
+The recipes can then be run with the following:
+```
+. ./path.sh
+. ./run.sh
+```
+We note that the user may need to configure ESPnet to fit their environment. Details can be found [here](https://espnet.github.io/espnet/tutorial.html) and [here](https://espnet.github.io/espnet/parallelization.html).
+
+## Running the Code
+
+1. You will need to download the datasets from Common Voice and Siminchik, and prepare them into the Kaldi format.
+   - To use multilingual pre-training, a model needs to be trained on FLEURS.
+   ```
+   cd egs2/fleurs/asr1
+   <set config to train_asr_conformer_scctc.yaml>
+   . ./run.sh 
+   ```
+
+3. Select config:
+   - Subtask 1: `conf/train_asr_demo_transformer.yaml`
+   - Subtask 2: `conf/train_asr_conformer_pretrained.yaml`, set max epoch to 65 for Guarani and 70 for Quechua
+4. Change language in `run.sh` and point to corresponding data directories for each split
+5. To use the LM for Quechua
+   - Set `use_lm` to true in `run.sh`
+   - Set `lm_weight` in `conf/decode_asr.yaml` to 0.1
+6. `./run.sh`
+
 <div align="left"><img src="doc/image/espnet_logo1.png" width="550"/></div>
 
 # ESPnet: end-to-end speech processing toolkit
 
 |system/pytorch ver.|1.4.0|1.5.1|1.6.0|1.7.1|1.8.1|1.9.1|1.10.2|1.11.0|1.12.1|1.13.1|
 | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: | :---: |
-|ubuntu20/python3.9/pip||||||||||[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
-|ubuntu20/python3.8/pip||||||||||[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
-|ubuntu18/python3.7/pip|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
+|ubuntu/python3.10/pip||||||||||[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
+|ubuntu/python3.9/pip||||||||||[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
+|ubuntu/python3.8/pip||||||||||[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
+|ubuntu/python3.7/pip|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|[![Github Actions](https://github.com/espnet/espnet/workflows/CI/badge.svg)](https://github.com/espnet/espnet/actions)|
 |debian9/python3.7/conda||||||||||[![debian9](https://github.com/espnet/espnet/workflows/debian9/badge.svg)](https://github.com/espnet/espnet/actions?query=workflow%3Adebian9)|
 |centos7/python3.7/conda||||||||||[![centos7](https://github.com/espnet/espnet/workflows/centos7/badge.svg)](https://github.com/espnet/espnet/actions?query=workflow%3Acentos7)|
-|doc/python3.8||||||||||[![doc](https://github.com/espnet/espnet/workflows/doc/badge.svg)](https://github.com/espnet/espnet/actions?query=workflow%3Adoc)|
+|ubuntu/doc/python3.8||||||||||[![doc](https://github.com/espnet/espnet/workflows/doc/badge.svg)](https://github.com/espnet/espnet/actions?query=workflow%3Adoc)|
+
 
 
 [![PyPI version](https://badge.fury.io/py/espnet.svg)](https://badge.fury.io/py/espnet)
@@ -19,6 +76,7 @@
 [![codecov](https://codecov.io/gh/espnet/espnet/branch/master/graph/badge.svg)](https://codecov.io/gh/espnet/espnet)
 [![Code style: black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black)
 [![Imports: isort](https://img.shields.io/badge/%20imports-isort-%231674b1?style=flat&labelColor=ef8336)](https://pycqa.github.io/isort/)
+[![pre-commit.ci status](https://results.pre-commit.ci/badge/github/espnet/espnet/master.svg)](https://results.pre-commit.ci/latest/github/espnet/espnet/master)
 [![Mergify Status](https://img.shields.io/endpoint.svg?url=https://api.mergify.com/v1/badges/espnet/espnet&style=flat)](https://mergify.com)
 [![Gitter](https://badges.gitter.im/espnet-en/community.svg)](https://gitter.im/espnet-en/community?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge)
 
