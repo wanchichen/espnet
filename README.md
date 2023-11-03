@@ -37,14 +37,15 @@ We note that the user may need to configure ESPnet to fit their environment. Det
 ## Running the Code
 
 1. You will need to download the datasets from Common Voice and Siminchik, and prepare them into the Kaldi format.
-   - To use multilingual pre-training, a model needs to be trained on FLEURS.
+   - For Common Voice data, this can be automated with `local/data.sh`, which needs to be modified to point to the downloaded `tar` file from Common Voice.
+2. To use multilingual pre-training, a model needs to be trained on FLEURS.
    ```
    cd egs2/fleurs/asr1
    <set config to train_asr_conformer_scctc.yaml>
    . ./run.sh 
    ```
 
-3. Select config:
+3. `cd egs2/iwslt23_low_resource` and select config:
    - Subtask 1: `conf/train_asr_demo_transformer.yaml`
    - Subtask 2: `conf/train_asr_conformer_pretrained.yaml`, set max epoch to 65 for Guarani and 70 for Quechua
 4. Change language in `run.sh` and point to corresponding data directories for each split
