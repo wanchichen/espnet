@@ -54,6 +54,11 @@ We note that the user may need to configure ESPnet to fit their environment. Det
    - Set `lm_weight` in `conf/decode_asr.yaml` to 0.1
 6. `./run.sh`
 
+## Model Outputs
+Our model outputs are located in:
+- Subtask 2 Quechua: `egs2/iwslt23_low_resource/asr1/exp/asr_train_asr_conformer_pretrained_raw_unconstrained_char_sp/decode_asr_lm_lm_train_lm_unconstrained_char_valid.loss.ave_asr_model_valid.acc.ave/cv_quy/text`
+- Subtask 2 Guarani: `egs2/iwslt23_low_resource/asr1/exp_gn/asr_train_asr_conformer_pretrained_raw_gn_char_sp/decode_asr_asr_model_valid.acc.ave/test_gn/text`
+
 <div align="left"><img src="doc/image/espnet_logo1.png" width="550"/></div>
 
 # ESPnet: end-to-end speech processing toolkit
