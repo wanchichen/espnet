@@ -56,6 +56,7 @@ We note that the user may need to configure ESPnet to fit their environment. Det
 
 ## Model Outputs
 Our model outputs are located in:
+- [Subtask 1 Guarani](https://github.com/wanchichen/espnet/blob/que_spa/egs2/iwslt23_low_resource/asr1/exp_gn/asr_train_asr_demo_transformer/decode_asr/test_gn/text): `egs2/iwslt23_low_resource/asr1/exp_gn/asr_train_asr_demo_transformer/decode_asr/test_gn/text`
 - [Subtask 2 Quechua](https://github.com/wanchichen/espnet/blob/que_spa/egs2/iwslt23_low_resource/asr1/exp/asr_train_asr_conformer_pretrained_raw_unconstrained_char_sp/decode_asr_lm_lm_train_lm_unconstrained_char_valid.loss.ave_asr_model_valid.acc.ave/cv_quy/text): `egs2/iwslt23_low_resource/asr1/exp/asr_train_asr_conformer_pretrained_raw_unconstrained_char_sp/decode_asr_lm_lm_train_lm_unconstrained_char_valid.loss.ave_asr_model_valid.acc.ave/cv_quy/text`
 - [Subtask 2 Guarani](https://github.com/wanchichen/espnet/blob/que_spa/egs2/iwslt23_low_resource/asr1/exp_gn/asr_train_asr_conformer_pretrained_raw_gn_char_sp/decode_asr_asr_model_valid.acc.ave/test_gn/text): `egs2/iwslt23_low_resource/asr1/exp_gn/asr_train_asr_conformer_pretrained_raw_gn_char_sp/decode_asr_asr_model_valid.acc.ave/test_gn/text`
 
