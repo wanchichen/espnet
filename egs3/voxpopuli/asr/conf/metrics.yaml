@@ -1,0 +1,32 @@
+##########################################################
+#                 METRIC SCORING SETTING                 #
+##########################################################
+#   python run.py --stages measure \
+#       --training_config conf/tuning/train_asr_e_branchformer.yaml \
+#       --inference_config conf/inference.yaml \
+#       --metrics_config conf/metrics.yaml
+#
+# exp_tag / exp_dir / inference_dir are omitted on purpose: run.py copies
+# exp_tag and exp_dir from the training config and inference_dir from the
+# inference config, so `measure` scores exactly the directory `infer` wrote.
+# Every subdirectory of inference_dir is discovered and scored as one test set,
+# and results land in ${inference_dir}/metrics.json.
+
+##########################################################
+#                    METRIC DEFINITION                   #
+##########################################################
+# ref_key/hyp_key default to ref/hyp, matching the keys returned by
+# src/inference.py:build_output -> ref.scp and hyp.scp.
+#
+# No clean_types: VoxPopuli's `normalized_text` is already lowercased with
+# punctuation removed, so there is nothing left for a text cleaner to do. If you
+# train on `raw_text` instead, add a cleaner here or the WER will be dominated
+# by casing and punctuation.
+metrics:
+  - metric:
+      _target_: espnet3.systems.asr.metrics.wer.WER
+      clean_types:
+
+  - metric:
+      _target_: espnet3.systems.asr.metrics.cer.CER
+      clean_types:

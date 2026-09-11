@@ -1,0 +1,59 @@
+# Layout and split definitions for the VoxPopuli ASR recipe.
+#
+# `builder` describes where the corpus lives on disk; `dataset` describes what
+# the recipe is allowed to ask for. Both sections are read by builder.py and
+# dataset.py, so the on-disk contract is stated once.
+
+builder:
+  # Looked up under <recipe_dir>/ when neither `source_dir` nor the environment
+  # variable is set.
+  dataset_path: download/voxpopuli
+  source_env_var: VOXPOPULI
+
+  # `python -m voxpopuli.get_asr_data --root ROOT --lang LANG` writes
+  # ROOT/transcribed_data/LANG/. The recipe accepts a path to any of those three
+  # levels (see builder.iter_language_root_candidates).
+  transcribed_subdir: transcribed_data
+
+  # Per-split manifest file name inside the language directory.
+  manifest_template: asr_{split}.tsv
+
+dataset:
+  # Split names are VoxPopuli's own; there is no recipe-side resplitting.
+  supported_splits:
+    - train
+    - dev
+    - test
+
+  # `en_accented` is a test set only (VoxPopuli README: "the accented speech
+  # data is only composed of a test set for now"), so `train`/`dev` are not
+  # required to exist for it.
+  test_only_languages:
+    - en_accented
+
+  # The 16 languages with transcribed ASR data, plus the accented English test
+  # set. Anything else has raw audio but no ASR transcripts.
+  supported_languages:
+    - en
+    - de
+    - fr
+    - es
+    - pl
+    - it
+    - ro
+    - hu
+    - cs
+    - nl
+    - fi
+    - hr
+    - sk
+    - sl
+    - et
+    - lt
+    - en_accented
+
+  # Manifest column used as the ASR target. `normalized_text` is VoxPopuli's
+  # ASR target: lowercased, punctuation stripped, numbers spelled out. Set
+  # `text_field: raw_text` in the training config to train on the cased and
+  # punctuated transcript instead.
+  text_field: normalized_text

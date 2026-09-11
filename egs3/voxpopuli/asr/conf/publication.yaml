@@ -1,0 +1,50 @@
+##########################################################
+#                  PUBLICATION SETTING                   #
+##########################################################
+#   python run.py --stages pack_model \
+#       --training_config conf/tuning/train_asr_e_branchformer.yaml \
+#       --inference_config conf/inference.yaml \
+#       --metrics_config conf/metrics.yaml \
+#       --publication_config conf/publication.yaml
+#
+# --inference_config is passed so pack_model can find metrics.json under that
+# run's inference_dir and render the results table into the bundled README.
+#
+# Three artifacts the packed config points at live OUTSIDE exp_dir, because
+# exp/<lang>/<tag>/config.yaml stores recipe-relative paths:
+#     token_list: ./data/<lang>/bpe_5000/tokens.txt
+#     bpemodel:   ./data/<lang>/bpe_5000/bpe.model
+#     stats_file: ./exp/stats/<lang>/train/feats_stats.npz
+# All three are listed under `include`.
+
+recipe_dir: .
+lang: en
+data_dir: ${recipe_dir}/data/${lang}
+
+pack_model:
+  out_dir: ${exp_dir}/model_pack
+  allow_overwrite: false
+  include:
+    - ${recipe_dir}/src
+    - ${recipe_dir}/dataset
+    - ${data_dir}/**/tokens.txt
+    - ${data_dir}/**/bpe.model
+    - ${data_dir}/**/bpe.vocab
+    # global_mvn statistics referenced by model.normalize_conf.stats_file
+    - ${recipe_dir}/exp/stats/${lang}/train/feats_stats.npz
+  exclude:
+    # inference outputs (TEMPLATE defaults)
+    - inference
+    - inference_*
+    # every raw Lightning checkpoint: periodic_step*, step*, last*, epoch*.
+    # Inference loads the averaged .pth, never these.
+    - "*.ckpt"
+    # keep ONLY valid.acc.ave_10best.pth. "?" is a single character, so this
+    # matches ave_1best..ave_9best but not ave_10best.
+    - "valid.acc.ave_?best.pth"
+    - "valid.acc.ave_10best.snap_*.pth"
+    # training-time bookkeeping
+    - tensorboard
+    - wandb
+    - curves
+    - "*.log"
